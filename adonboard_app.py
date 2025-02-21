@@ -1,41 +1,53 @@
 import streamlit as st
-import numpy as np
-import time
+import random
 
-# 🎯 Ρυθμίσεις εμφάνισης
-st.set_page_config(page_title="AdOnBoard - Ναυτιλιακό Επιτραπέζιο", layout="wide")
+# Ρυθμίσεις Στυλ
+st.markdown(
+    """
+    <style>
+        body {background-color: #0E1C36; color: white;}
+        .big-font {font-size: 24px !important; font-weight: bold; color: #FFDD57;}
+        .game-board {display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;}
+        .tile {width: 80px; height: 80px; background-color: #1F4068; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; border-radius: 10px; border: 2px solid #FFDD57;}
+        .player-icon {color: #FF5733; font-size: 22px;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# 📜 Διαδρομές του παιχνιδιού
-routes = ["🏝 Πολικός Αστέρας", "🌙 Φεγγάρι", "⚓ Ναυτίλος", "🚢 Φάρος", "🌊 Άνεμος", "⛈ Καταιγίδα", "🏠 Λιμάνι"]
+st.markdown('<p class="big-font">🎲 AdOnBoard: Το Επιτραπέζιο Ναυτιλίας</p>', unsafe_allow_html=True)
 
-# 🔹 Διατήρηση κατάστασης μέσω session_state
-if "players" not in st.session_state:
-    st.session_state.players = {
-        "Παίκτης 1": {"money": 1000000, "position": 0, "icon": "⛵"},
-        "Παίκτης 2": {"money": 900000, "position": 0, "icon": "🚤"},
-    }
+# Ταμπλό Παιχνιδιού
+routes = ["⚓ Καταφύγιο", "🌊 Πολικός Αστέρας", "🚢 Φεγγάρι", "⚓ Ναυτίλος", "🛳️ Φάρος", "🌬️ Άνεμος"]
+players = st.session_state.get("players", {})
+num_players = st.number_input("Πόσοι παίκτες θα παίξουν; (1-4)", min_value=1, max_value=4, value=1, step=1)
 
-# 🎮 Πάνελ παιχνιδιού
-st.sidebar.title("⚓ Πλοία & Παίκτες")
-st.title("🎲 AdOnBoard - Το Επιτραπέζιο Ναυτιλίας")
+if st.button("🔄 Έναρξη Παιχνιδιού"):
+    players.clear()
+    for i in range(1, num_players + 1):
+        players[f"Παίκτης {i}"] = {"position": 0, "money": 1000000}
+    st.session_state.players = players
 
-# 🔄 Button για Ζάρι
-if st.sidebar.button("🎲 Ρίξε το Ζάρι!"):
-    for player in st.session_state.players:
-        roll = np.random.randint(1, 7)
-        old_position = st.session_state.players[player]["position"]
-        st.session_state.players[player]["position"] = (old_position + roll) % len(routes)
-
-# 📊 Κατάσταση Παικτών
-st.sidebar.markdown("### 📜 Κατάσταση Παικτών")
-for player, data in st.session_state.players.items():
-    st.sidebar.write(f"{data['icon']} **{player}** | 📍 Θέση: {routes[data['position']]} | 💰 {data['money']}€")
-
-# 🛳️ Αναπαράσταση του ταμπλό με emoji
-st.subheader("📍 Θέσεις Παικτών στο Ταμπλό")
-board_state = ["⬜"] * len(routes)
-
-for player, data in st.session_state.players.items():
-    board_state[data["position"]] = data["icon"]
-
-st.write(" | ".join(board_state))
+if players:
+    st.markdown("### 📍 Θέσεις Παικτών στο Ταμπλό")
+    
+    # Εμφάνιση Ταμπλό
+    board_html = "<div class='game-board'>"
+    for i, place in enumerate(routes):
+        occupied = [p for p in players if players[p]["position"] == i]
+        board_html += f"<div class='tile'>{place}<br>{' '.join(occupied)}</div>"
+    board_html += "</div>"
+    st.markdown(board_html, unsafe_allow_html=True)
+    
+    # Ρίψη Ζαριού
+    for player in players:
+        if st.button(f"🎲 Ρίξε το Ζάρι ({player})"):
+            roll = random.randint(1, 6)
+            players[player]["position"] = (players[player]["position"] + roll) % len(routes)
+            st.session_state.players = players
+            st.experimental_rerun()
+    
+    # Κατάσταση Παικτών
+    st.markdown("### 📜 Κατάσταση Παικτών")
+    for player, data in players.items():
+        st.markdown(f"**{player}** - Θέση: {routes[data['position']]} | 💰 Χρήματα: {data['money']}€")
