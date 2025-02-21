@@ -1,99 +1,48 @@
 import streamlit as st
-import random
+import pandas as pd
+import numpy as np
 import time
 
-# ✅ Ρύθμιση εμφάνισης
-st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Παιχνίδι", page_icon="⛵", layout="wide")
+# 🎯 Ρυθμίσεις εμφάνισης
+st.set_page_config(page_title="AdOnBoard - Ναυτιλιακό Επιτραπέζιο", layout="wide")
 
-# ✅ Διαδρομές & Εικόνες
-routes = {
-    "Πολικός Αστέρας": "🌟",
-    "Φεγγάρι": "🌙",
-    "Ναυτίλος": "⚓",
-    "Φάρος": "🏮",
-    "Άνεμος": "🌬️"
+# 🏝️ Εικόνα Ταμπλό (χρησιμοποίησε την εικόνα που έχουμε φτιάξει)
+board_image_url = "https://your-image-link.com"  # Βάλε εδώ το σωστό URL της εικόνας
+
+st.image(board_image_url, use_column_width=True)
+
+# 🔹 Διαδρομές (σαν τα τετράγωνα της Monopoly)
+routes = ["Πολικός Αστέρας", "Φεγγάρι", "Ναυτίλος", "Φάρος", "Άνεμος", "Καταιγίδα", "Λιμάνι"]
+
+# 🎮 Κατάσταση Παιχνιδιού
+st.sidebar.title("⚓ Πλοία & Παίκτες")
+players = {
+    "Παίκτης 1": {"money": 1000000, "position": 0, "ships": 1},
+    "Παίκτης 2": {"money": 900000, "position": 0, "ships": 1},
 }
-event_cards = [
-    "🌊 Κακοκαιρία! Χάνεις έναν γύρο.",
-    "🎉 Χορηγία από τη Vodafone! Κερδίζεις 200000€.",
-    "📡 Βλάβη στο GPS! Πληρώνεις 50000€.",
-    "☀️ Καλός καιρός! Προχωράς 2 θέσεις μπροστά.",
-    "🛥️ Ναύλωση VIP! Κερδίζεις 300000€."
-]
 
-# ✅ Κατάσταση παιχνιδιού
-if "game_started" not in st.session_state:
-    st.session_state["game_started"] = False
-if "players" not in st.session_state:
-    st.session_state["players"] = 1
-if "player_data" not in st.session_state:
-    st.session_state["player_data"] = {}
+# 🔄 Button για Ζάρι
+if st.sidebar.button("🎲 Ρίξε το Ζάρι!"):
+    for player in players:
+        roll = np.random.randint(1, 7)
+        players[player]["position"] = (players[player]["position"] + roll) % len(routes)
+        st.sidebar.write(f"🎯 **{player}** προχώρησε {roll} θέσεις -> **{routes[players[player]['position']]}**")
 
-# ✅ Συνάρτηση εμφάνισης πίνακα παιχνιδιού
-def display_board():
-    st.subheader("🎯 Πίνακας Παιχνιδιού")
-    board = ["🔲"] * len(routes)
+# 📍 Εμφάνιση του Πίνακα Παικτών
+st.sidebar.markdown("### 📜 Κατάσταση Παικτών")
+for player, data in players.items():
+    st.sidebar.write(f"🛳️ **{player}** | 📍 Θέση: {routes[data['position']]} | 💰 Χρήματα: {data['money']}€")
 
-    for player, data in st.session_state["player_data"].items():
-        pos = data["position"]
-        board[pos] = f"🎭 {player[0]}"  # Εμφάνιση του αρχικού γράμματος κάθε παίκτη
+# 🚀 Προσομοίωση κίνησης των πλοίων πάνω στο ταμπλό
+st.subheader("🔄 Τα πλοία κινούνται...")
+board_positions = np.zeros(len(routes))
 
-    st.write(" ➡️ ".join(board))
+for player, data in players.items():
+    board_positions[data["position"]] += 1
 
-# ✅ Συνάρτηση για να ξεκινήσει το παιχνίδι
-def start_game():
-    st.title("⛵ AdOnBoard: Το Επιτραπέζιο Παιχνίδι Ναυτιλίας 🎲")
-    
-    st.image("https://cdn.pixabay.com/photo/2017/1/23/22/5/sea-2006139_1280.jpg", use_container_width=True)
+# 🗺️ Χάρτης παιχνιδιού
+for i, route in enumerate(routes):
+    if board_positions[i] > 0:
+        st.write(f"📍 **{route}** - {int(board_positions[i])} πλοία εδώ!")
 
-    st.session_state["players"] = st.number_input("Πόσοι παίκτες θα παίξουν; (1-4):", min_value=1, max_value=4, step=1)
-
-    if st.button("🏁 Ξεκίνα το παιχνίδι!"):
-        st.session_state["game_started"] = True
-        st.session_state["player_data"] = {
-            f"Παίκτης {i+1}": {"money": 1000000, "position": 0} for i in range(st.session_state["players"])
-        }
-
-# ✅ Συνάρτηση για το gameplay
-def play_game():
-    display_board()
-    st.header("🎲 Ρίξτε το Ζάρι!")
-    
-    for player in st.session_state["player_data"]:
-        st.subheader(f"{player} 🎮")
-        if st.button(f"🎲 Ρίξε ζάρι ({player})"):
-            roll = random.randint(1, 6)
-            st.session_state["player_data"][player]["position"] = (st.session_state["player_data"][player]["position"] + roll) % len(routes)
-            position_name = list(routes.keys())[st.session_state["player_data"][player]["position"]]
-            st.success(f"{player} μετακινήθηκε στη διαδρομή: {routes[position_name]} **{position_name}**!")
-
-            event = random.choice(event_cards)
-            st.warning(f"🃏 Κάρτα συμβάντος: {event}")
-
-            # ✅ Εξαγωγή ποσού από την κάρτα συμβάντος
-            words = event.split()
-            amount = 0
-            for word in words:
-                if "€" in word:
-                    amount = int(word.replace("€", "").replace(".", "").replace(",", ""))
-                    break
-            
-            if "Κερδίζεις" in event:
-                st.session_state["player_data"][player]["money"] += amount
-            elif "Πληρώνεις" in event:
-                st.session_state["player_data"][player]["money"] -= amount
-
-            st.info(f"{player} τώρα έχει **{st.session_state['player_data'][player]['money']}€**.")
-
-            time.sleep(1)
-
-    display_board()
-
-    if st.button("🏁 Τέλος παιχνιδιού"):
-        st.session_state["game_started"] = False
-
-# ✅ Έναρξη παιχνιδιού
-if st.session_state["game_started"]:
-    play_game()
-else:
-    start_game()
+st.markdown("---")
