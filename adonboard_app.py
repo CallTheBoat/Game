@@ -1,73 +1,69 @@
 import streamlit as st
 import random
 import folium
-from streamlit_folium import folium_static
-import pandas as pd
+from streamlit_folium import st_folium
 
-# Δημιουργία χάρτη με μαρίνες και διαδρομές
+# Χάρτης με τις μαρίνες και τα δρομολόγια
 marinas = {
-    "Μύκονος": (37.4467, 25.3289),
-    "Σαντορίνη": (36.3932, 25.4615),
-    "Ρόδος": (36.4349, 28.2176),
-    "Αθήνα": (37.9838, 23.7275)
+    "Αθήνα": [37.9838, 23.7275],
+    "Μύκονος": [37.4467, 25.3289],
+    "Σαντορίνη": [36.3932, 25.4615],
+    "Ρόδος": [36.4350, 28.2176],
 }
 
 routes = {
+    "Αθήνα - Μύκονος": ["Αθήνα", "Μύκονος"],
     "Μύκονος - Σαντορίνη": ["Μύκονος", "Σαντορίνη"],
-    "Ρόδος - Αθήνα": ["Ρόδος", "Αθήνα"]
+    "Σαντορίνη - Ρόδος": ["Σαντορίνη", "Ρόδος"],
+    "Ρόδος - Αθήνα": ["Ρόδος", "Αθήνα"],
 }
 
-def create_map(selected_route=None):
-    game_map = folium.Map(location=[37.5, 25.0], zoom_start=6)
+players = {
+    "Παίκτης 1": {"position": "Αθήνα", "sponsor": "Nike", "likes": 0, "earnings": 0},
+    "Παίκτης 2": {"position": "Μύκονος", "sponsor": "Adidas", "likes": 0, "earnings": 0},
+}
+
+def roll_dice():
+    return random.randint(1, 6)
+
+def move_ship(player):
+    route_keys = list(routes.keys())
+    selected_route = random.choice(route_keys)
+    player["position"] = routes[selected_route][-1]  # Μετακίνηση στο τέλος της διαδρομής
+    return selected_route
+
+def update_map():
+    m = folium.Map(location=[37.5, 25.0], zoom_start=6)
     
-    # Προσθήκη μαρινών
+    # Σημεία μαρινών
     for marina, coords in marinas.items():
-        folium.Marker(location=coords, popup=marina, icon=folium.Icon(color='blue')).add_to(game_map)
+        folium.Marker(location=coords, popup=marina, icon=folium.Icon(color='blue')).add_to(m)
     
-    # Προσθήκη διαδρομής
-    if selected_route:
-        route_coords = [marinas[loc] for loc in routes[selected_route]]
-        folium.PolyLine(route_coords, color='red', weight=5).add_to(game_map)
+    # Δρομολόγια
+    for route, stops in routes.items():
+        locations = [marinas[stop] for stop in stops]
+        folium.PolyLine(locations, color="red", weight=2.5, opacity=0.8).add_to(m)
     
-    return game_map
+    return m
 
-# Προφίλ παίκτη
-player = {
-    "name": "Παίκτης 1",
-    "money": 1000000,
-    "likes": 0,
-    "sponsor": "AdOnBoard",
-    "position": "Μύκονος"
-}
+st.title("AdOnBoard: Επιτραπέζιο Παιχνίδι Ναυτιλίας")
 
-# Διαφημιστική αξία περιοχών
-ad_value = {
-    "Μύκονος": 50000,
-    "Σαντορίνη": 75000,
-    "Ρόδος": 60000,
-    "Αθήνα": 40000
-}
-
-# Streamlit UI
-st.title("🏝️ AdOnBoard - Επιτραπέζιο Ναυτιλίας")
-st.sidebar.header("Πλοία & Παίκτες")
-st.sidebar.write(f"🎭 {player['name']} - Χορηγός: {player['sponsor']}")
-st.sidebar.write(f"💰 Χρήματα: {player['money']} €")
-st.sidebar.write(f"👍 Likes: {player['likes']}")
-
-# Επιλογή διαδρομής
-selected_route = st.selectbox("Επιλέξτε διαδρομή", list(routes.keys()))
-
-# Ρίψη ζαριού
-if st.button("🎲 Ρίξε το ζάρι!"):
-    steps = random.randint(1, 2)
-    index = routes[selected_route].index(player["position"])
-    new_index = min(index + steps, len(routes[selected_route]) - 1)
-    player["position"] = routes[selected_route][new_index]
-    earnings = ad_value[player["position"]]
-    player["money"] += earnings
-    player["likes"] += random.randint(100, 500)
-    st.success(f"Το πλοίο έφτασε στη {player['position']} και κέρδισε {earnings}€ από χορηγούς!")
+if st.button("🎲 Ρίξε το Ζάρι!"):
+    for player_name, player_data in players.items():
+        selected_route = move_ship(player_data)
+        st.write(f"{player_name} μετακινείται από {selected_route} και βρίσκεται τώρα στο {player_data['position']}")
+        
+        # Προσθήκη διαφημιστικών εσόδων
+        if player_data["position"] in marinas:
+            player_data["earnings"] += random.randint(1000, 5000)  # Τυχαίο ποσό διαφήμισης
+            player_data["likes"] += random.randint(10, 100)  # Likes από social media
+            st.write(f"Ο χορηγός {player_data['sponsor']} πλήρωσε {player_data['earnings']}€!")
 
 # Εμφάνιση χάρτη
-folium_static(create_map(selected_route))
+map_object = update_map()
+st_folium(map_object, width=700, height=500)
+
+# Προβολή στατιστικών
+st.subheader("🔹 Στατιστικά Παικτών")
+for player, data in players.items():
+    st.write(f"**{player}** - Τοποθεσία: {data['position']}, Χορηγός: {data['sponsor']}, Likes: {data['likes']}, Κέρδη: {data['earnings']}€")
