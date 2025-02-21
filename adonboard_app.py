@@ -1,71 +1,56 @@
 import streamlit as st
-import random
-import time
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import random
+import time
 
-# Ορισμός του ταμπλό
-board_positions = [
-    "Καταφύγιο", "Πολικός Αστέρας", "Φάρος", "Ναυτίλος", "Ανεμος", "Φυγή", "Νησί", "Λιμάνι"
-]
+# ----------------- ΡΥΘΜΙΣΕΙΣ ΕΦΑΡΜΟΓΗΣ -----------------
+st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Ναυτιλίας", layout="wide")
 
-# Σχεδιασμός του ταμπλό
-board_grid = np.zeros((3, 3))
+# ----------------- ΤΙΤΛΟΣ -----------------
+st.markdown("<h1 style='text-align: center; color: navy;'>🚢 AdOnBoard - Επιτραπέζιο Ναυτιλίας 🎲</h1>", unsafe_allow_html=True)
 
-# Εικόνες και εικονίδια
-icons = {
-    "Καταφύγιο": "🏠", "Πολικός Αστέρας": "🌟", "Φάρος": "🚢", "Ναυτίλος": "⚓", "Ανεμος": "💨", "Φυγή": "⛵", "Νησί": "🏝️", "Λιμάνι": "⚓"
-}
+# ----------------- ΟΡΙΣΜΟΣ ΠΑΙΚΤΩΝ -----------------
+num_players = st.sidebar.slider("🔹 Πόσοι παίκτες θα παίξουν;", 1, 4, 2)
 
-# Θέση παικτών
-player_positions = {1: 0, 2: 0}
+players = {f"Παίκτης {i+1}": {"θέση": 0, "χρήματα": 1000000} for i in range(num_players)}
 
-# Χρήματα παικτών
-player_money = {1: 1000000, 2: 900000}
+# Ταμπλό (Λίστα τοποθεσιών)
+board = ["Καταφύγιο", "Πολικός Αστέρας", "Φεγγάρι", "Ναύτιλος", "Φάρος", "Άνεμος"]
 
-# Ρίψη ζαριού με animation
-def roll_dice():
-    for _ in range(10):
-        st.session_state["dice"] = random.randint(1, 6)
-        time.sleep(0.1)
-    return st.session_state["dice"]
+# ----------------- ΦΤΙΑΞΕ ΤΟ ΤΑΜΠΛΟ -----------------
+def draw_board(players_positions):
+    board_grid = np.zeros((1, len(board)))  # 1 γραμμή, Ν στήλες (για τις τοποθεσίες)
 
-# Κίνηση παικτών
-def move_player(player):
-    roll = roll_dice()
-    player_positions[player] = (player_positions[player] + roll) % len(board_positions)
-    st.session_state["message"] = f"Παίκτης {player} κινήθηκε στο {board_positions[player_positions[player]]} {icons[board_positions[player_positions[player]]]}"
-
-# Σχεδίαση ταμπλό
-def draw_board():
-    fig, ax = plt.subplots(figsize=(5, 5))
-    sns.heatmap(board_grid, annot=np.array(board_positions).reshape(3, 3), fmt="", cmap="Blues", linewidths=2, linecolor='black', cbar=False, ax=ax)
+    for idx, player_pos in enumerate(players_positions):
+        board_grid[0, player_pos] = idx + 1  # Βάζει τον αριθμό του παίκτη στη θέση του
+    
+    fig, ax = plt.subplots(figsize=(10, 2))
+    sns.heatmap(board_grid, annot=board, fmt="", cmap="Blues", linewidths=0.5, cbar=False, xticklabels=False, yticklabels=False, ax=ax)
+    plt.title("🌍 Θέσεις Παικτών στο Ταμπλό")
     st.pyplot(fig)
 
-# UI Streamlit
-st.title("AdOnBoard - Επιτραπέζιο Ναυτιλίας 🏴‍☠️")
-st.subheader("🔹 Θέσεις Παικτών στο Ταμπλό")
-draw_board()
+# ----------------- ΡΙΞΕ ΤΟ ΖΑΡΙ -----------------
+def roll_dice():
+    return random.randint(1, 6)
 
-for player in player_positions:
-    st.write(f"**Παίκτης {player}**: Θέση -> {board_positions[player_positions[player]]} {icons[board_positions[player_positions[player]]]} | Χρήματα: {player_money[player]}")
+# ----------------- ΚΙΝΗΣΗ ΠΑΙΚΤΗ -----------------
+def move_player(player):
+    roll = roll_dice()
+    st.write(f"🎲 Ο {player} έριξε **{roll}**!")
+    time.sleep(1)
+    
+    new_position = (players[player]["θέση"] + roll) % len(board)  # Κυκλικό ταμπλό
+    players[player]["θέση"] = new_position
 
-st.subheader("🎲 Ρίξε το Ζάρι!")
-if "dice" not in st.session_state:
-    st.session_state["dice"] = 1
+    st.success(f"🚢 Ο {player} μετακινήθηκε στη θέση **{board[new_position]}**!")
 
-st.image(f"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Dice-{st.session_state['dice']}-b.svg/120px-Dice-{st.session_state['dice']}-b.svg.png")
-
-if st.button("Ρίξε το Ζάρι! (Παίκτης 1)"):
-    move_player(1)
-
-if "message" in st.session_state:
-    st.success(st.session_state["message"])
-
-if st.button("Ρίξε το Ζάρι! (Παίκτης 2)"):
-    move_player(2)
-
-st.subheader("📍 Κατάσταση Παικτών")
-for player in player_positions:
-    st.write(f"**Παίκτης {player}**: Θέση -> {board_positions[player_positions[player]]} {icons[board_positions[player_positions[player]]]} | Χρήματα: {player_money[player]}")
+# ----------------- ΕΝΑΡΞΗ ΠΑΙΧΝΙΔΙΟΥ -----------------
+if st.button("🎲 Ρίξε το Ζάρι!"):
+    current_player = list(players.keys())[0]  # Ο πρώτος παίκτης παίζει
+    move_player(current_player)
+    
+    # Εμφάνισε το ταμπλό με τις νέες θέσεις
+    players_positions = [p["θέση"] for p in players.values()]
+    draw_board(players_positions)
