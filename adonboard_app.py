@@ -46,7 +46,7 @@ st.write(f"🌤 **Καιρός στη διαδρομή:** {weather_desc}")
 st.write(f"💨 **Ταχύτητα Ανέμου:** {wind_speed} m/s (επηρεάζει την ταχύτητα του σκάφους)")
 
 # 🚢 Χάρτης με Κινούμενα Σκάφη
-map = folium.Map(location=[37.5, 24.5], zoom_start=6, tiles="Stamen Terrain")
+map = folium.Map(location=[37.5, 24.5], zoom_start=6, tiles="Stamen Terrain", attr="Map tiles by Stamen Design")
 folium.Marker(route_data["start"], tooltip="Αφετηρία", icon=folium.Icon(color="green", icon="cloud")).add_to(map)
 folium.Marker(route_data["end"], tooltip="Προορισμός", icon=folium.Icon(color="red", icon="flag")).add_to(map)
 
