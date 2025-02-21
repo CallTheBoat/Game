@@ -4,6 +4,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 import time
+import geopandas as gpd
+import folium
+from streamlit_folium import folium_static
 
 # ----------------- ΡΥΘΜΙΣΕΙΣ ΕΦΑΡΜΟΓΗΣ -----------------
 st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Παιχνίδι", layout="wide")
@@ -33,30 +36,28 @@ def show_leaderboard():
     st.sidebar.subheader("🏆 Leaderboard")
     st.sidebar.dataframe(leaderboard)
 
-# ----------------- ΔΗΜΙΟΥΡΓΙΑ ΧΑΡΤΗ & ΔΙΑΔΡΟΜΩΝ -----------------
-def draw_board():
-    fig, ax = plt.subplots(figsize=(8, 8))
-    locations = hotspots + quiet_areas
-    np.random.shuffle(locations)
-    angles = np.linspace(0, 2*np.pi, len(locations), endpoint=False)
-    positions = np.array([np.cos(angles), np.sin(angles)]).T * 10
+# ----------------- ΔΗΜΙΟΥΡΓΙΑ ΔΙΑΔΡΟΜΩΝ ΣΕ ΧΑΡΤΗ -----------------
+def draw_map():
+    greece_map = folium.Map(location=[37.9838, 23.7275], zoom_start=6)
     
-    for i, (x, y) in enumerate(positions):
-        color = "red" if locations[i] in hotspots else "blue"
-        ax.add_patch(plt.Circle((x, y), 1, fill=True, color=color))
-        ax.text(x, y, locations[i], ha='center', fontsize=10, fontweight='bold')
+    # Προσθήκη τουριστικών μαρίνων
+    marina_locations = {
+        "Athens Marina": [37.9402, 23.6524],
+        "Mykonos Marina": [37.4467, 25.3289],
+        "Santorini Marina": [36.3932, 25.4615],
+        "Rhodes Marina": [36.4341, 28.2176],
+        "Corfu Marina": [39.624, 19.9215]
+    }
     
-    ax.set_xlim(-12, 12)
-    ax.set_ylim(-12, 12)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_frame_on(False)
-    st.pyplot(fig)
+    for name, coords in marina_locations.items():
+        folium.Marker(coords, popup=name, icon=folium.Icon(color='blue', icon='cloud')).add_to(greece_map)
+    
+    folium_static(greece_map)
 
+# ----------------- ΚΙΝΗΣΗ ΠΑΙΚΤΩΝ & ΔΙΑΔΡΟΜΕΣ -----------------
 def roll_dice():
     return random.randint(1, 6)
 
-# ----------------- ΚΙΝΗΣΗ ΠΑΙΚΤΩΝ & CHALLENGES -----------------
 def move_player(player):
     roll = roll_dice()
     st.write(f"🎲 {player} έριξε **{roll}**!")
@@ -80,8 +81,8 @@ def move_player(player):
 if st.button("🎲 Ρίξε το Ζάρι!"):
     for player in players:
         move_player(player)
-    draw_board()
+    draw_map()
     show_leaderboard()
 
-draw_board()
+draw_map()
 show_leaderboard()
