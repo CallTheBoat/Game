@@ -1,61 +1,52 @@
 import streamlit as st
-import random
-import time
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+import random
 
-# Διαμόρφωση ταμπλό
-st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Ναυτιλίας", layout="wide")
+# Δημιουργία του ταμπλό
+st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Παιχνίδι", layout="wide")
+st.title("🚢 AdOnBoard - Το Επιτραπέζιο Παιχνίδι Ναυτιλίας")
 
-# Χάρτης της Ελλάδας ως βάση του ταμπλό
+# Λίστα με προορισμούς
+destinations = ["Καταφύγιο", "Πολικός Αστέρας", "Φανάρι", "Ναυτίλος", "Φάρος", "Άνεμος"]
+
+# Διαδρομές του παιχνιδιού
+board_size = len(destinations)
+player_positions = {1: 0, 2: 0}
+player_money = {1: 1000000, 2: 900000}
+
+# Λειτουργία για το ζάρι
+def roll_dice():
+    return random.randint(1, 6)
+
+# Δημιουργία ταμπλό
 fig, ax = plt.subplots(figsize=(8, 8))
 ax.set_xlim(0, 10)
 ax.set_ylim(0, 10)
 ax.set_xticks([])
 ax.set_yticks([])
-ax.set_title("Ταμπλό: Διαδρομές στη Ναυτιλία")
 
-# Σημεία σταθμών
-stations = {
-    "Θεσσαλονίκη": (1, 9),
-    "Καβάλα": (3, 8),
-    "Λήμνος": (5, 7),
-    "Μυτιλήνη": (7, 6),
-    "Χίος": (8, 5),
-    "Σύρος": (6, 3),
-    "Πειραιάς": (4, 2),
-    "Χανιά": (2, 1)
-}
+# Θέσεις προορισμών
+positions = [(1, 1), (3, 1), (5, 1), (7, 1), (9, 1), (9, 3)]
+for i, (x, y) in enumerate(positions):
+    ax.text(x, y, destinations[i], ha='center', fontsize=12, bbox=dict(facecolor='blue', alpha=0.5))
 
-# Σχεδίαση διαδρομών
-for key, value in stations.items():
-    ax.scatter(value[0], value[1], color='blue', s=100)
-    ax.text(value[0] + 0.2, value[1], key, fontsize=12, color='black')
-
-# Παίκτες και θέσεις
-players = {"Παίκτης 1": [1, 9], "Παίκτης 2": [1, 9]}
-player_icons = {"Παίκτης 1": "🚢", "Παίκτης 2": "⛵"}
-
-# Προσθήκη κουμπιού για ρίψη ζαριού
-st.sidebar.title("Πλοία & Παίκτες")
-if st.sidebar.button("🎲 Ρίξε το Ζάρι!"):
-    for player in players.keys():
-        move = random.randint(1, 3)
-        players[player][0] = min(players[player][0] + move, 10)
-        players[player][1] = max(players[player][1] - move, 1)
-        st.sidebar.write(f"{player} κινήθηκε κατά {move} θέσεις!")
-        
-    # Ενημέρωση ταμπλό
-    for player, position in players.items():
-        ax.scatter(position[0], position[1], color='red', s=150, label=player_icons[player])
+# Κουμπί ρίψης ζαριού
+if st.button("🎲 Ρίξε το Ζάρι!"):
+    dice = roll_dice()
+    st.write(f"Το ζάρι έφερε: {dice}")
+    
+    # Κίνηση του παίκτη
+    player_positions[1] = (player_positions[1] + dice) % board_size
+    st.write(f"Παίκτης 1 μετακινήθηκε στο {destinations[player_positions[1]]} 🚢")
+    
+    # Προβολή ταμπλό
+    for i, (x, y) in enumerate(positions):
+        if i == player_positions[1]:
+            ax.text(x, y, "🚢", ha='center', fontsize=15, bbox=dict(facecolor='yellow', alpha=0.5))
     st.pyplot(fig)
-    time.sleep(1)
-
-# Παρουσίαση ταμπλό
-st.title("AdOnBoard - Το Επιτραπέζιο Ναυτιλίας")
-st.write("### 📌 Θέσεις Παικτών στο Ταμπλό")
-st.pyplot(fig)
-
-# Διαφήμιση και ειδικές κάρτες
-if random.random() > 0.7:
-    st.success("🎉 Διαφημιστική καμπάνια της AdOnBoard! Κέρδισες μπόνους!")
+    
+    # Γεγονός πλοίου
+    event = random.choice(["Διαφημιστική Καμπάνια!", "Νέος Διαγωνισμός!", "Χορηγία Vodafone!", "Καταιγίδα στη Θάλασσα!"])
+    st.write(f"📢 {event}")
