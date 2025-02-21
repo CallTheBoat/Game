@@ -44,7 +44,7 @@ def display_board():
 def start_game():
     st.title("⛵ AdOnBoard: Το Επιτραπέζιο Παιχνίδι Ναυτιλίας 🎲")
     
-    st.image("st.image("https://cdn.pixabay.com/photo/2017/01/23/22/05/sea-2006139_1280.jpg", use_container_width=True)
+    st.image("st.image("https://cdn.pixabay.com/photo/2017/1/23/22/5/sea-2006139_1280.jpg", use_container_width=True)
 
     st.session_state["players"] = st.number_input("Πόσοι παίκτες θα παίξουν; (1-4):", min_value=1, max_value=4, step=1)
 
