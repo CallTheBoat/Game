@@ -3,7 +3,7 @@ import random
 import time
 
 # ✅ Ρύθμιση εμφάνισης
-st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Παιχνίδι", page_icon="⛵")
+st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Παιχνίδι", page_icon="⛵", layout="wide")
 
 # ✅ Διαδρομές & Εικόνες
 routes = {
@@ -29,6 +29,17 @@ if "players" not in st.session_state:
 if "player_data" not in st.session_state:
     st.session_state["player_data"] = {}
 
+# ✅ Συνάρτηση εμφάνισης πίνακα παιχνιδιού
+def display_board():
+    st.subheader("🎯 Πίνακας Παιχνιδιού")
+    board = ["🔲"] * len(routes)
+
+    for player, data in st.session_state["player_data"].items():
+        pos = data["position"]
+        board[pos] = f"🎭 {player[0]}"  # Εμφάνιση του αρχικού γράμματος κάθε παίκτη
+
+    st.write(" ➡️ ".join(board))
+
 # ✅ Συνάρτηση για να ξεκινήσει το παιχνίδι
 def start_game():
     st.title("⛵ AdOnBoard: Το Επιτραπέζιο Παιχνίδι Ναυτιλίας 🎲")
@@ -45,7 +56,9 @@ def start_game():
 
 # ✅ Συνάρτηση για το gameplay
 def play_game():
+    display_board()
     st.header("🎲 Ρίξτε το Ζάρι!")
+    
     for player in st.session_state["player_data"]:
         st.subheader(f"{player} 🎮")
         if st.button(f"🎲 Ρίξε ζάρι ({player})"):
@@ -73,6 +86,8 @@ def play_game():
             st.info(f"{player} τώρα έχει **{st.session_state['player_data'][player]['money']}€**.")
 
             time.sleep(1)
+
+    display_board()
 
     if st.button("🏁 Τέλος παιχνιδιού"):
         st.session_state["game_started"] = False
