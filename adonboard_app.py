@@ -40,7 +40,7 @@ if st.button("🎲 Ρίξε το Ζάρι!"):
         move = np.random.choice(list(routes.keys()))
         players[player]["position"] = move.split(" - ")[1]
         players[player]["likes"] += np.random.randint(1, 20)
-    st.experimental_rerun()
+    st.rerun().
 
 # Εμφάνιση χάρτη
 st.subheader("🌍 Χάρτης Διαδρομών")
