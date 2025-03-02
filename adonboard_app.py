@@ -1,3 +1,16 @@
+import streamlit as st
+
+page_bg = """
+<style>
+body {
+    background-color: #ff416c;
+    background-image: linear-gradient(90deg, #ff416c, #ff4b2b);
+    background-size: cover;
+}
+</style>
+"""
+st.markdown(page_bg, unsafe_allow_html=True)
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,7 +38,6 @@
             flex-direction: column;
         }
         .button {
-            background: linear-gradient(90deg, #ff416c, #ff4b2b);
             padding: 15px 30px;
             border: none;
             border-radius: 30px;
