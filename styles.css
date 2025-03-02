@@ -1,10 +1,27 @@
-st.markdown(
-    """
-    <style>
-    .container {
-        padding: 15px 30px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+body {
+    background-color: #0a0a0a;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    overflow: hidden;
+}
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 600px;
+    flex-direction: column;
+}
+.button {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    background: linear-gradient(90deg, #ff416c, #ff4b2b);
+}
+.button:hover {
+    transform: scale(1.1);
+}
