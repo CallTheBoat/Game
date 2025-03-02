@@ -1,89 +1,89 @@
-import streamlit as st
-import folium
-from streamlit_folium import folium_static
-import random
-import time
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdOnBoard - Futuristic UI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.8/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.9.4/lottie.min.js"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .button {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            padding: 15px 30px;
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .button:hover {
+            transform: scale(1.1);
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚢 AdOnBoard - The Futuristic Experience</h1>
+        <p>Choose your adventure in the world of maritime advertising.</p>
+        <button class="button" onclick="startAnimation()">Start Game</button>
+    </div>
+    <canvas id="bg"></canvas>
 
-# ------------------------------ #
-#       ΑΡΧΙΚΕΣ ΡΥΘΜΙΣΕΙΣ
-# ------------------------------ #
-st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Ναυτιλίας", layout="wide")
+    <script>
+        // Background Animation using Three.js
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-st.title("🚢 AdOnBoard - Επιτραπέζιο Ναυτιλίας")
+        let geometry = new THREE.TorusGeometry(10, 3, 16, 100);
+        let material = new THREE.MeshBasicMaterial({ color: 0xff4b2b, wireframe: true });
+        let torus = new THREE.Mesh(geometry, material);
+        scene.add(torus);
 
-# ------------------------------ #
-#       ΕΠΙΛΟΓΗ ΡΟΛΟΥ ΠΑΙΚΤΗ
-# ------------------------------ #
-st.sidebar.header("🛠 Επιλέξτε Ρόλο")
+        camera.position.z = 30;
 
-role = st.sidebar.radio("Διάλεξε τον ρόλο σου:", ["🛳️ Πλοιοκτήτης", "🧑‍✈️ Επιβάτης", "💰 Χορηγός"])
+        function animate() {
+            requestAnimationFrame(animate);
+            torus.rotation.x += 0.01;
+            torus.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
 
-if role == "🛳️ Πλοιοκτήτης":
-    st.sidebar.subheader("⚓ Πλοιοκτήτης")
-    st.sidebar.write("Διαχειρίζεσαι σκάφη και επιλέγεις διαδρομές.")
-    ship_type = st.sidebar.selectbox("Επέλεξε τύπο σκάφους:", ["Luxury Yacht (10 άτομα)", "Catamaran (8 άτομα)", "Speedboat (5 άτομα)"])
-    st.sidebar.write(f"🚤 Έχεις επιλέξει: {ship_type}")
-
-elif role == "🧑‍✈️ Επιβάτης":
-    st.sidebar.subheader("👥 Επιβάτης")
-    st.sidebar.write("Διαλέγεις διαδρομές και συμμετέχεις στις εμπειρίες!")
-    st.sidebar.write("Κέρδισε likes και χορηγίες μέσω των social media!")
-
-elif role == "💰 Χορηγός":
-    st.sidebar.subheader("💼 Χορηγός")
-    st.sidebar.write("Επιλέγεις διαδρομές και προσφέρεις χορηγία σε επιβάτες και πλοιοκτήτες.")
-    sponsor_name = st.sidebar.text_input("Όνομα χορηγού:")
-    ad_budget = st.sidebar.slider("Προϋπολογισμός Χορηγίας (€)", 500, 50000, step=500)
-    st.sidebar.write(f"🤑 Προσφέρεις χορηγία αξίας {ad_budget}€!")
-
-# ------------------------------ #
-#       ΕΠΙΛΟΓΗ ΔΙΑΔΡΟΜΗΣ
-# ------------------------------ #
-routes = {
-    "Σαντορίνη - Μύκονος": [[36.3932, 25.4615], [37.4467, 25.3289]],
-    "Ρόδος - Αθήνα": [[36.4349, 28.2176], [37.9838, 23.7275]],
-    "Κέρκυρα - Πάτρα": [[39.6243, 19.9217], [38.2466, 21.7346]]
-}
-
-st.sidebar.header("🌍 Επιλογή Διαδρομής")
-selected_route = st.sidebar.selectbox("Διάλεξε διαδρομή:", list(routes.keys()))
-route_coordinates = routes[selected_route]
-
-# ------------------------------ #
-#       ΧΑΡΤΗΣ ΜΕ ΣΚΑΦΗ
-# ------------------------------ #
-st.header(f"🌊 Χάρτης Διαδρομής: {selected_route}")
-
-map_center = route_coordinates[0]
-m = folium.Map(location=map_center, zoom_start=6, tiles="CartoDB Positron")
-
-for coord in route_coordinates:
-    folium.Marker(location=coord, icon=folium.Icon(color="blue", icon="ship", prefix="fa")).add_to(m)
-
-folium_static(m)
-
-# ------------------------------ #
-#       ΜΗΧΑΝΙΣΜΟΣ ΖΑΡΙΟΥ
-# ------------------------------ #
-st.sidebar.header("🎲 Ρίξε το ζάρι!")
-if st.sidebar.button("Ρίξε το ζάρι!"):
-    dice_roll = random.randint(1, 6)
-    st.sidebar.write(f"🎲 Έφερες {dice_roll}!")
-
-    # Προσομοίωση κίνησης του σκάφους
-    progress_bar = st.progress(0)
-    for i in range(dice_roll):
-        time.sleep(0.5)
-        progress_bar.progress((i + 1) / dice_roll)
-
-    st.sidebar.success("🚀 Το σκάφος προχώρησε στη διαδρομή!")
-
-# ------------------------------ #
-#       ΣΤΑΤΙΣΤΙΚΑ ΠΑΙΚΤΗ
-# ------------------------------ #
-st.sidebar.subheader("📊 Στατιστικά Παίκτη")
-st.sidebar.write(f"👍 Likes: {random.randint(50, 500)}")
-st.sidebar.write(f"💰 Χορηγικά Έσοδα: {random.randint(1000, 10000)}€")
-st.sidebar.write(f"🏆 Εμπειρία: {random.randint(1, 10)} επίπεδο")
-
-st.success("🎮 Είσαι έτοιμος να παίξεις! Επιλογή διαδρομής, ρίξε το ζάρι και κέρδισε χορηγούς!")
+        function startAnimation() {
+            gsap.to(".container", { opacity: 0, duration: 1, onComplete: () => {
+                document.querySelector(".container").style.display = "none";
+                console.log("Game Started!");
+            }});
+        }
+    </script>
+</body>
+</html>
