@@ -1,3 +1,12 @@
+Παρακάτω θα βρεις τον ίδιο κώδικα από το προηγούμενο παράδειγμα (με 5 στάσεις/νησιά/παραλίες και διακεκομμένη γραμμή στο Tab 2), εμπλουτισμένο στο “Sponsor Offer” ώστε να εμφανίζεται η προτεινόμενη διαδρομή – δηλαδή σε ποιες παραλίες θα σταματάει το σponsored σκάφος. Αυτή η διαδρομή είναι ήδη αποτυπωμένη οπτικά στον χάρτη (Rhodes - Main Port → Kallithea Beach → Lindos Beach → Prasonisi Beach → Finish Spot).
+
+> Οδηγίες: Αποθηκεύεις αυτόν τον κώδικα, (π.χ. app.py), τρέχεις streamlit run app.py, και βλέπεις τα Tab1-Tab4. Στο Tab 2 (Board Game), δίπλα στο “Sponsor Offer,” θα δεις και τις παραλίες αναλυτικά.
+
+
+
+
+---
+
 import streamlit as st
 import math
 import folium
@@ -212,3 +221,4 @@ Will you accept or decline?""")
         st.write(f"- Discount: {sp['discount_percent']}%")
         st.write(f"- Duration: {sp['duration_days']} days ({sp['start_date']}→{sp['end_date']})")
         st.write(f"- {sp['daily_posts']} posts/day")
+
