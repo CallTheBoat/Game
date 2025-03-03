@@ -21,6 +21,18 @@ def haversine_distance_km(lat1, lon1, lat2, lon2):
 def distance_nm(lat1, lon1, lat2, lon2):
     return haversine_distance_km(lat1, lon1, lat2, lon2) * KM_TO_NM
 
+# ---------- Επιλογή Ρόλου ----------
+st.set_page_config(page_title="Unified Maritime Board Game", layout="wide")
+st.title("Unified Maritime Board Game")
+
+role = st.selectbox("Select Your Role:", ["Passenger", "Ship Owner", "Sponsor"])
+if role == "Passenger":
+    st.info("As a Passenger, explore destinations and earn rewards!")
+elif role == "Ship Owner":
+    st.info("As a Ship Owner, manage your routes and maximize profits!")
+elif role == "Sponsor":
+    st.info("As a Sponsor, choose routes to advertise your brand!")
+
 # ---------- Tab 1: Dynamic Route Simulation ----------
 def dynamic_route_simulation():
     st.subheader("Dynamic Route Simulation")
@@ -95,6 +107,17 @@ def dynamic_route_simulation():
         st.info(f"The ship moved {move_nm:.2f} NM forward.")
     st.subheader("Dynamic Route Map")
     st_folium(m, width=800, height=500)
+    
+    # Εάν ο ρόλος είναι Sponsor, εμφάνισε επιπλέον Advertising Dashboard
+    if role == "Sponsor":
+        st.markdown("### Advertising Dashboard")
+        reach = random.randint(5000, 50000)
+        st.metric("Potential Engagement", f"{reach} impressions")
+        st.write("Select a Passenger for Sponsored Content:")
+        passengers = ["Dimitris Chatzi", "Maria Kosta", "Alex Papadopoulos"]
+        selected_passenger = st.selectbox("Select a Passenger:", passengers)
+        engagement = random.randint(1000, 10000)
+        st.metric(f"Estimated Engagement for {selected_passenger}", f"{engagement} views")
 
 # ---------- Tab 2: Board Game Simulation ----------
 def board_game_simulation():
@@ -162,11 +185,19 @@ def board_game_simulation():
         st.write(f"**Square Event**: {current_sq['event']}")
     else:
         st.write("No special event here.")
+    
+    # Εάν ο ρόλος είναι Sponsor, εμφάνισε επιπλέον Advertising Dashboard
+    if role == "Sponsor":
+        st.markdown("### Advertising Dashboard")
+        reach = random.randint(5000, 50000)
+        st.metric("Potential Engagement", f"{reach} impressions")
+        st.write("Select a Passenger for Sponsored Content:")
+        passengers = ["Dimitris Chatzi", "Maria Kosta", "Alex Papadopoulos"]
+        selected_passenger = st.selectbox("Select a Passenger:", passengers, key="board_passenger")
+        engagement = random.randint(1000, 10000)
+        st.metric(f"Estimated Engagement for {selected_passenger}", f"{engagement} views")
 
 # ---------- Main App: Tabs ----------
-st.set_page_config(page_title="Unified Maritime Board Game", layout="wide")
-st.title("Unified Maritime Board Game")
-
 tabs = st.tabs(["Dynamic Route Simulation", "Board Game Simulation"])
 with tabs[0]:
     dynamic_route_simulation()
