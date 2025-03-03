@@ -1,27 +1,73 @@
-body {
-    background-color: #0a0a0a;
-    color: white;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    overflow: hidden;
+import streamlit as st
+import random
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# CSS Styling
+def load_css():
+    st.markdown("""
+        <style>
+        body {background-color: #f4f4f4; text-align: center;}
+        .big-font {font-size:24px !important;}
+        </style>
+    """, unsafe_allow_html=True)
+
+# Αρχικοποίηση της σελίδας
+st.set_page_config(page_title="AdOnBoard - Maritime Marketing Game", layout="wide")
+load_css()
+
+# Προσωποποίηση παίκτη
+st.markdown("<h1 style='text-align: center;'>🚢 AdOnBoard - Maritime Marketing Game</h1>", unsafe_allow_html=True)
+player_name = st.text_input("Enter your company name:")
+if not player_name:
+    st.warning("Please enter your company name to proceed.")
+
+# Αρχικό κεφάλαιο
+starting_budget = 50000
+if "budget" not in st.session_state:
+    st.session_state["budget"] = starting_budget
+
+# Επιλογές Διαφημιστικής Στρατηγικής
+st.markdown("<h3>Choose your advertising strategy:</h3>", unsafe_allow_html=True)
+strategies = {
+    "Digital Ads": {"cost": 10000, "impact": random.randint(50, 100)},
+    "Billboard in Port": {"cost": 15000, "impact": random.randint(70, 120)},
+    "Event Sponsorship": {"cost": 25000, "impact": random.randint(100, 150)}
 }
-.container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 600px;
-    flex-direction: column;
+choice = st.radio("", list(strategies.keys()))
+
+# Εκκίνηση της διαφήμισης
+if st.button("Invest in Advertisement"):
+    if st.session_state["budget"] >= strategies[choice]["cost"]:
+        st.session_state["budget"] -= strategies[choice]["cost"]
+        impact = strategies[choice]["impact"]
+        st.session_state["budget"] += impact * 100  # Return on Investment
+        st.success(f"🎉 Your campaign was successful! You gained {impact * 100} revenue.")
+    else:
+        st.error("Not enough budget! Choose a cheaper option.")
+
+# Προβολή προϋπολογισμού
+st.markdown(f"### 📊 Current Budget: ${st.session_state['budget']}")
+
+# Διάγραμμα Απόδοσης Επενδύσεων
+fig, ax = plt.subplots()
+campaigns = ["Digital", "Billboard", "Event"]
+values = [strategies["Digital Ads"]["impact"], strategies["Billboard in Port"]["impact"], strategies["Event Sponsorship"]["impact"]]
+ax.bar(campaigns, values, color=['blue', 'green', 'red'])
+st.pyplot(fig)
+
+# Leaderboard Simulation
+st.markdown("### 🏆 Top Companies in Maritime Marketing")
+leaderboard_data = {
+    "Company": [player_name, "OceanAds", "BlueMarketing", "WaveMedia"],
+    "Revenue": [st.session_state["budget"], random.randint(40000, 80000), random.randint(30000, 70000), random.randint(35000, 75000)]
 }
-.button {
-    padding: 15px 30px;
-    border: none;
-    border-radius: 30px;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    transition: 0.3s;
-    background: linear-gradient(90deg, #ff416c, #ff4b2b);
-}
-.button:hover {
-    transform: scale(1.1);
-}
+df = pd.DataFrame(leaderboard_data).sort_values(by="Revenue", ascending=False)
+st.dataframe(df)
+
+# Animation
+st.markdown("""
+<iframe src="https://lottiefiles.com/animations/boat-sailing" width="100%" height="400" frameborder="0" allowfullscreen></iframe>
+""", unsafe_allow_html=True)
+
+st.markdown("<h4>🚀 Keep investing in ads to become the leader in maritime marketing!</h4>", unsafe_allow_html=True)
