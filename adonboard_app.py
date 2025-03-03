@@ -40,13 +40,13 @@ BOX_SIZE = 0.03  # Μέγεθος για σχεδίαση των κουτιών
 box_colors = ['#a8dadc', '#f1faee', '#457b9d', '#e63946', '#2a9d8f',
               '#ffb703', '#8ecae6', '#219ebc', '#023047', '#ffb703']
 
-# Ορισμός 10 κουτιών με διάφορα events και επιλογές (τα "Ad Zone" έχουν σχετικές οδηγίες)
+# Ορισμός 10 κουτιών με διάφορα events και επιλογές
 board_squares = [
     {"name": "Start", "coords": (36.3932, 25.4615), "event": "Begin your journey."},
     {"name": "Calm Waters", "coords": (36.50, 25.55), "event": "Smooth sailing."},
-    {"name": "Ad Zone A", "coords": (36.60, 25.60), "event": "Ad Zone: Run Ad to boost profile & option: Become Ship Owner."},
-    {"name": "Choppy Seas", "coords": (36.70, 25.65), "event": "Waves ahead! Lose a turn."},
-    {"name": "Ad Zone B", "coords": (36.80, 25.70), "event": "Ad Zone: Run Ad to boost profile & option: Become Sponsor."},
+    {"name": "Ad Zone A", "coords": (36.60, 25.60), "event": "Ad Zone: Run Ad & Option: Become Ship Owner & Join Ad Campaign."},
+    {"name": "Choppy Seas", "coords": (36.70, 25.65), "event": "Waves! Lose a turn."},
+    {"name": "Ad Zone B", "coords": (36.80, 25.70), "event": "Ad Zone: Run Ad & Option: Become Sponsor & Join Ad Campaign."},
     {"name": "Stormy Waters", "coords": (36.90, 25.75), "event": "Severe storm! Skip turn."},
     {"name": "Treasure Island", "coords": (37.00, 25.80), "event": "Bonus: Advance 1 square."},
     {"name": "Social Hub", "coords": (37.10, 25.85), "event": "Ad Zone: Run Ad to gain likes and shares."},
@@ -99,7 +99,7 @@ folium.Marker(
 
 st_folium(m, width=800, height=500)
 
-# ---------- Λογική Ρόλων & ρίψη ζαριού ----------
+# ---------- Λογική Ρόλων & Ρίψη Ζαριού ----------
 if st.button("Roll the Dice"):
     if st.session_state["skip_turn"]:
         st.warning("You must skip this turn due to a previous event!")
@@ -114,15 +114,16 @@ if st.button("Roll the Dice"):
         current_square = board_squares[new_index]
         st.info(f"Boat landed on: {current_square['name']}")
         
-        # Επεξεργασία Event του κουτιού
         event_text = current_square["event"].lower()
+        # Έλεγχος για αρνητικά events
         if "lose a turn" in event_text or "skip turn" in event_text or "storm" in event_text:
             st.info("Event: You lose your turn!")
             st.session_state["skip_turn"] = True
         if "bonus: advance" in event_text:
             st.success("Bonus: Advance 1 square!")
             st.session_state["boat_index"] = min(new_index + 1, len(board_squares) - 1)
-        # Εάν είναι Ad Zone, δώσε επιλογή για "Run Ad" που ενημερώνει το προφίλ
+        
+        # Εάν είναι Ad Zone, δώσε επιλογές για "Run Ad" και "Join Ad Campaign"
         if "ad zone" in event_text:
             if st.button("Run Ad", key=f"run_ad_{new_index}"):
                 added_score = 10
@@ -132,7 +133,7 @@ if st.button("Roll the Dice"):
                 st.session_state["profiles"]["player"]["likes"] += added_likes
                 st.session_state["profiles"]["player"]["shares"] += added_shares
                 st.success(f"Ad run! +{added_score} ad score, +{added_likes} likes, +{added_shares} shares.")
-                # Εάν το event προσφέρει επιλογή αλλαγής ρόλου:
+                # Επιλογές αλλαγής ρόλου μέσω διαφήμισης
                 if "become ship owner" in event_text:
                     if st.button("Become Ship Owner", key=f"owner_{new_index}"):
                         st.session_state["profiles"]["player"]["role"] = "Ship Owner"
@@ -141,6 +142,12 @@ if st.button("Roll the Dice"):
                     if st.button("Become Sponsor", key=f"sponsor_{new_index}"):
                         st.session_state["profiles"]["player"]["role"] = "Sponsor"
                         st.success("Role changed: You are now a Sponsor!")
+            # Νέο χαρακτηριστικό: Popup για συμμετοχή σε διαφημιστική καμπάνια
+            if st.button("Join Ad Campaign", key=f"join_ad_{new_index}"):
+                # Ενημερώνουμε το προφίλ με επιπλέον bonus
+                bonus_score = 20
+                st.session_state["profiles"]["player"]["ad_score"] += bonus_score
+                st.success("You have joined the advertisement campaign trip with the ship! Bonus +20 ad score.")
         
     current_sq = board_squares[st.session_state["boat_index"]]
     st.write(f"**Boat is now at:** {current_sq['name']}")
