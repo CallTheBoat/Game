@@ -1,13 +1,23 @@
 import streamlit as st
+import random
 import math
 import folium
 from streamlit_folium import st_folium
 from datetime import date, timedelta
 
-# ----------- Session State -----------
-if "active_sponsor" not in st.session_state:
-    st.session_state["active_sponsor"] = None
+# ---------- Utility: minimal distance -----------
+def distance_nm(lat1, lon1, lat2, lon2):
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (math.sin(d_lat / 2) ** 2 +
+         math.cos(math.radians(lat1)) *
+         math.cos(math.radians(lat2)) *
+         math.sin(d_lon / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    dist_km = 6371.0 * c
+    return dist_km * 0.539957
 
+# ---------- Session State -----------
 if "current_square" not in st.session_state:
     st.session_state["current_square"] = 0
 
@@ -21,12 +31,23 @@ if "profile" not in st.session_state:
         "impressions": 0
     }
 
-# ----------- Tabs -----------
+if "active_sponsor" not in st.session_state:
+    st.session_state["active_sponsor"] = None  # dict with sponsor details
+
+if "sponsor_approval" not in st.session_state:
+    st.session_state["sponsor_approval"] = None  # "Approved" or "Rejected" or None
+
+if "total_nm" not in st.session_state:
+    st.session_state["total_nm"] = 0.0
+
+# ---------- Create Tabs -----------
 tabs = st.tabs(["Board Game", "Sponsor Requirements"])
 
 # ========== TAB 2: Sponsor Requirements ==========
 with tabs[1]:
     st.title("Sponsor Requirements")
+    
+    # Εάν δεν υπάρχει καμπάνια, δεν εμφανίζει τίποτα
     if st.session_state["active_sponsor"] is None:
         st.info("No active sponsor campaign.")
     else:
@@ -36,25 +57,45 @@ with tabs[1]:
         st.write(f"**Discount**: {sp['discount_percent']}% off boat costs")
         st.write(f"**Duration**: {sp['duration_days']} days")
         st.write(f"**Dates**: {sp['start_date']} → {sp['end_date']}")
+
         st.markdown("### Sponsor Demands")
-        st.write(f"- Posts per Day: {sp['daily_posts']}")
-        st.write(f"- Hours near Beach per Day: {sp['hours_near_beach']}")
-        st.write(f"- Branded Materials: {sp['tshirts']}")
-        st.info("Check the Board Game tab to continue playing...")
+        st.write(f"- **Posts per Day**: {sp['daily_posts']}")
+        st.write(f"- **Hours near Popular Beaches**: {sp['hours_near_beach']} / day")
+        st.write(f"- **Branded Materials**: {sp['tshirts']}")
+
+        # Επιπλέον κουμπί: "Send my Profile to Sponsor"
+        st.markdown("### Send Profile to Sponsor?")
+        send_btn = st.button("Send my Profile to Sponsor")
+        if send_btn:
+            # Τυχαία πιθανότητα έγκρισης/απόρριψης
+            approve_chance = random.random()
+            if approve_chance < 0.6:
+                st.session_state["sponsor_approval"] = "Approved"
+                st.success("Sponsor has APPROVED your profile! Congrats!")
+            else:
+                st.session_state["sponsor_approval"] = "Rejected"
+                st.error("Sponsor has REJECTED your profile. Sorry!")
+        
+        # Εμφάνιση αν έχουμε ήδη approval/rejection
+        if st.session_state["sponsor_approval"] == "Approved":
+            st.success("Your profile is ALREADY APPROVED by sponsor!")
+        elif st.session_state["sponsor_approval"] == "Rejected":
+            st.error("Your profile was REJECTED by sponsor.")
 
 # ========== TAB 1: Board Game ==========
 with tabs[0]:
-    st.title("Minimal Board Game Demo")
+    st.title("Minimal Board Game with Sponsor Demo")
 
-    # Minimal route squares (two squares only)
+    # Route squares (2 squares)
     squares = [
-        {"name": "Start",  "coords": (36.45, 28.22)},
+        {"name": "Start", "coords": (36.45, 28.22)},
         {"name": "Finish", "coords": (36.40, 28.15)}
     ]
-
+    
     st.write(f"**Current Square**: {squares[st.session_state['current_square']]['name']}")
+    st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
 
-    # Folium map
+    # Map
     m = folium.Map(location=squares[0]["coords"], zoom_start=7)
     for sq in squares:
         folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
@@ -75,34 +116,45 @@ with tabs[0]:
     st.write(f"- campaigns_joined: {pr['campaigns_joined']}")
     st.write(f"- impressions: {pr['impressions']}")
 
-    # Roll Dice (with 2 squares, we just move to finish)
+    # Roll Dice
     if st.button("Roll the Dice"):
         if st.session_state["current_square"] == 0:
+            # move to Finish
+            c1 = squares[0]["coords"]
+            c2 = squares[1]["coords"]
+            distnm = distance_nm(c1[0], c1[1], c2[0], c2[1])
+            st.session_state["total_nm"] += distnm
             st.session_state["current_square"] = 1
             st.success("Moved from Start to Finish!")
         else:
-            st.warning("You are already at Finish!")
+            st.warning("Already at Finish!")
 
-    # A stable sponsor offer
-    st.markdown("## Sponsor Offer")
-    st.info("We have a sponsor: Vodafone. Wants 1000 impressions, 50% discount. Accept?")
-    yes_btn = st.button("Yes, Accept Vodafone")
-    no_btn  = st.button("No, Decline")
+    # Sponsor Offer
+    st.markdown("### Sponsor Offer")
+    st.info("Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. Accept?")
+    accept_btn = st.button("Yes, Accept Sponsor")
+    decline_btn = st.button("No, Decline Sponsor")
 
-    if yes_btn:
+    if accept_btn:
+        # Δημιουργούμε τη χορηγία
+        dur_days = 5
+        startD = date.today()
+        endD = startD + timedelta(days=dur_days)
         st.session_state["active_sponsor"] = {
             "sponsor_name": "Vodafone",
             "required_impressions": 1000,
             "discount_percent": 50,
-            "duration_days": 5,
-            "start_date": date.today(),
-            "end_date": date.today() + timedelta(days=5),
+            "duration_days": dur_days,
+            "start_date": startD,
+            "end_date": endD,
             "daily_posts": 2,
             "hours_near_beach": 4,
             "tshirts": "Vodafone T-shirts & Banners"
         }
-        st.success("Accepted sponsor from Vodafone! Check 'Sponsor Requirements' tab.")
-    elif no_btn:
-        st.warning("Declined sponsor.")
+        # Reset sponsor_approval
+        st.session_state["sponsor_approval"] = None
+        st.success("Accepted sponsor from Vodafone! Go to 'Sponsor Requirements' tab to see details.")
+    elif decline_btn:
+        st.warning("Declined sponsor offer.")
 
-    st.write("Continue playing or go to Sponsor Requirements tab to see the details if accepted.")
+    st.markdown("Continue or check the second tab.")
