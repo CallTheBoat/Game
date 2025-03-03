@@ -3,6 +3,7 @@ import random
 import folium
 from streamlit_folium import st_folium
 import math
+from datetime import date, timedelta
 
 # ---------- Utility Functions ----------
 def haversine_distance_km(lat1, lon1, lat2, lon2):
@@ -187,6 +188,8 @@ with tabs[0]:
                         ig = st.number_input("Number of Instagram Followers", min_value=0, step=1)
                         adon = st.number_input("Number of AdOnBoard Friends", min_value=0, step=1)
                         posting_freq = st.selectbox("Posting Frequency", ["Daily", "Weekly", "Monthly", "Rarely"])
+                        # Νέα επιλογή: Διάρκεια καμπάνιας (σε ημέρες)
+                        duration_days = st.number_input("Campaign Duration (days)", min_value=1, value=3, step=1)
                         submit_campaign = st.form_submit_button("Submit Campaign Info")
                         if submit_campaign:
                             st.session_state["profiles"]["player"]["social_stats"]["facebook_friends"] = fb
@@ -199,6 +202,14 @@ with tabs[0]:
                             campaign_impressions = random.randint(1000, 5000)
                             st.session_state["profiles"]["player"]["impressions"] += campaign_impressions
                             st.success(f"Campaign joined! Bonus +{bonus_campaign} ad score, +{campaign_impressions} impressions.")
+                            # Υπολογισμός ημερομηνιών καμπάνιας
+                            start_date = date.today()
+                            end_date = start_date + timedelta(days=duration_days)
+                            st.markdown(f"**Campaign Dates:** {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                            # Εμφάνιση εικόνας με ιστιοπλοϊκό σκάφος και λίστα παραλιών
+                            st.image("https://via.placeholder.com/800x400.png?text=Sailing+Ship", caption="Sailing Ship in Action")
+                            beaches = ["Lindos Beach", "Faliraki Beach", "Tsambika Beach"]
+                            st.markdown("**Beaches on the Route:** " + ", ".join(beaches))
             
         if st.session_state["boat_index"] == len(board_squares) - 1:
             st.markdown("## Final Scoreboard")
@@ -235,20 +246,3 @@ with tabs[0]:
             st.write("**Badges:** " + ", ".join(profile["badges"]))
         else:
             st.write("**Badges:** None")
-
-# ------------------ TAB 2: VODAFONE CAMPAIGN SIMULATION ------------------
-with tabs[1]:
-    st.subheader("Vodafone Campaign Simulation")
-    st.write("This is a test scenario for a Vodafone ad campaign over 3 days.")
-    st.write("**Campaign Requirements:** Spend at least 70% of the campaign time near Rhodes beaches and gather at least 1000 impressions to win an 80% discount on a boat rental (initial price: €1500).")
-    # Καμπάνια 3 ημερών
-    st.write("Campaign Duration: 3 Days")
-    near_beach = st.slider("Percentage of time spent near Rhodes beaches", 0, 100, 70)
-    impressions = st.number_input("Total impressions collected during campaign", min_value=0, value=1000, step=50)
-    if st.button("Run Vodafone Campaign"):
-        if near_beach >= 70 and impressions >= 1000:
-            discount = 0.8
-            final_cost = 1500 * (1 - discount)
-            st.success(f"Campaign Successful! You win an 80% discount. Final boat rental cost: €{final_cost:.2f}")
-        else:
-            st.error("Campaign Failed. Requirements not met. (Need ≥70% time near beaches and ≥1000 impressions)")
