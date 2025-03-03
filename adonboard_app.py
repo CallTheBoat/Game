@@ -3,13 +3,16 @@ import random
 import folium
 from streamlit_folium import st_folium
 
-# --------------------------------------
-# 1) Ορισμός "ταμπλό" (Squares) σε μορφή Monopoly
-# --------------------------------------
-# Κάθε "κουτάκι" έχει:
-# - name (π.χ. νησί ή συμβάν)
-# - coords (lat, lon)
-# - event (κείμενο γεγονότος, αν υπάρχει)
+# ------------------------------
+# 1) Ορισμός "ταμπλό" (board squares)
+# ------------------------------
+# Κάθε κουτάκι έχει:
+# - name: το όνομα (π.χ. όνομα νησιού ή γεγονός)
+# - coords: το κέντρο του κουτιού (lat, lon)
+# - event: (προαιρετικά) μήνυμα όταν σταματάς σε αυτό
+# Θα σχεδιάσουμε κάθε κουτάκι ως ορθογώνιο με ακτίνα 0.02 βαθμών
+BOX_SIZE = 0.02
+
 board_squares = [
     {
         "name": "Santorini",
@@ -19,17 +22,17 @@ board_squares = [
     {
         "name": "Choppy Seas",
         "coords": (36.50, 25.50),
-        "event": "Choppy seas! Skip next turn!"
+        "event": "Choppy seas! Stay here for one turn."
     },
     {
-        "name": "Random Island #1",
+        "name": "Mystery Island",
         "coords": (36.70, 25.60),
         "event": ""
     },
     {
         "name": "Storm Area",
         "coords": (36.90, 25.70),
-        "event": "Storm - lose 1 turn!"
+        "event": "Storm - delay! Lose 1 turn."
     },
     {
         "name": "Mykonos",
@@ -38,90 +41,88 @@ board_squares = [
     },
 ]
 
-# --------------------------------------
-# 2) Αρχικές Ρυθμίσεις Streamlit
-# --------------------------------------
-st.set_page_config(page_title="Island Monopoly", layout="wide")
-st.title("Island Monopoly Board Game")
+# ------------------------------
+# 2) Ρυθμίσεις Streamlit
+# ------------------------------
+st.set_page_config(page_title="Island Board Game", layout="wide")
+st.title("Island Board Game")
 
 st.markdown("""
-Παράδειγμα επιτραπέζιου τύπου "Monopoly" πάνω σε χάρτη:
-- Κάθε κουτάκι είναι νησί ή γεγονός.
-- Με κάθε ρίψη ζαριού το πλοίο προχωράει αντίστοιχα.
-- Αν "πέσεις" σε κουτάκι με event, εμφανίζεται μήνυμα.
+Αυτό το app προσομοιώνει ένα επιτραπέζιο παιχνίδι πάνω σε χάρτη:
+- Κάθε κουτάκι (square) εμφανίζεται ως ορθογώνιο πάνω στον χάρτη.
+- Με κάθε ρίψη ζαριού το πλοίο κινείται κατά τόσα κουτάκια.
+- Αν το κουτάκι έχει event, εμφανίζεται σχετικό μήνυμα.
 """)
 
-# --------------------------------------
-# 3) Session State για το πλοίο
-# --------------------------------------
-# boat_index: σε ποιο κουτάκι βρισκόμαστε;
+# ------------------------------
+# 3) Session State για το παιχνίδι
+# ------------------------------
 if "boat_index" not in st.session_state:
-    st.session_state["boat_index"] = 0
+    st.session_state["boat_index"] = 0  # αρχική θέση στο πρώτο κουτάκι
 
-# skip_turn: αν είναι True, δεν μπορείς να παίξεις αυτόν τον γύρο (π.χ. λόγω storm)
 if "skip_turn" not in st.session_state:
     st.session_state["skip_turn"] = False
 
-# --------------------------------------
-# 4) Προβολή του Ταμπλό (Χάρτης)
-# --------------------------------------
-# Τοποθετούμε markers για ΟΛΑ τα squares
-# και ξεχωριστό marker για το πλοίο.
-start_coords = board_squares[0]["coords"]
-m = folium.Map(location=start_coords, zoom_start=7)
+# ------------------------------
+# 4) Σχεδιασμός Χάρτη με τα κουτάκια
+# ------------------------------
+# Επιλέγουμε ως κέντρο το πρώτο κουτάκι για αρχική τοποθέτηση του χάρτη.
+center_coords = board_squares[0]["coords"]
+m = folium.Map(location=center_coords, zoom_start=7)
 
-# Προσθήκη markers για όλα τα νησιά/κουτάκια:
+# Σχεδιάζουμε κάθε κουτάκι ως ορθογώνιο (rectangle)
 for i, square in enumerate(board_squares):
+    lat, lon = square["coords"]
+    bounds = [(lat - BOX_SIZE, lon - BOX_SIZE), (lat + BOX_SIZE, lon + BOX_SIZE)]
+    # Σχεδιάζουμε το ορθογώνιο με ελαφριά διαφάνεια
+    folium.Rectangle(
+        bounds=bounds,
+        color='green',
+        fill=True,
+        fill_opacity=0.2,
+        tooltip=f"{i}. {square['name']}"
+    ).add_to(m)
+    # Επίσης, προσθέτουμε ένα marker στο κέντρο για να φαίνεται το όνομα
     folium.Marker(
-        square["coords"],
-        tooltip=f"{i}. {square['name']}",
-        popup=square["event"] if square["event"] else f"{square['name']} (No event)"
+        [lat, lon],
+        icon=folium.DivIcon(html=f"""<div style="font-size: 12pt; color: darkgreen">{square['name']}</div>""")
     ).add_to(m)
 
-# Marker για τη ΘΕΣΗ του πλοίου
-boat_square = board_squares[st.session_state["boat_index"]]
-boat_coords = boat_square["coords"]
+# Marker για τη θέση του πλοίου (έγχρωμο εικονίδιο)
+current_square = board_squares[st.session_state["boat_index"]]
 folium.Marker(
-    boat_coords,
-    icon=folium.Icon(color="blue", icon="ship", prefix='fa'),
-    tooltip="Boat Position",
-    popup=f"Current: {boat_square['name']}"
+    current_square["coords"],
+    icon=folium.Icon(color="blue", icon="ship", prefix="fa"),
+    tooltip=f"Boat is here: {current_square['name']}"
 ).add_to(m)
 
-# Εμφάνιση Χάρτη
+# Εμφάνιση του χάρτη
 st_folium(m, width=800, height=500)
 
-# --------------------------------------
-# 5) Κουμπί Roll the Dice
-# --------------------------------------
+# ------------------------------
+# 5) Ρίψη ζαριού και μετακίνηση πλοίου
+# ------------------------------
 st.markdown("---")
 if st.button("Roll the Dice"):
     if st.session_state["skip_turn"]:
-        # Αν πρέπει να παρακάμψουμε αυτόν τον γύρο
         st.warning("You must skip this turn due to a previous event!")
-        st.session_state["skip_turn"] = False  # Ακυρώνουμε το skip για επόμενο γύρο
+        st.session_state["skip_turn"] = False
     else:
         dice = random.randint(1, 6)
         st.success(f"You rolled: {dice}")
-        # Μετακίνηση του πλοίου
         new_index = st.session_state["boat_index"] + dice
-        # Αν ξεπεράσουμε το τελευταίο κουτάκι, παραμένουμε στο τέλος
         if new_index >= len(board_squares):
-            new_index = len(board_squares) - 1
-
+            new_index = len(board_squares) - 1  # μένουμε στο τελευταίο κουτάκι
         st.session_state["boat_index"] = new_index
-        current_square = board_squares[new_index]
 
-        # Ελέγχουμε αν υπάρχει event
+        current_square = board_squares[new_index]
         if current_square["event"]:
-            st.info(f"Event: {current_square['event']}")
-            # Αν το event είναι "skip turn" ή "lose turn", μπορείς να βάλεις λογική εδώ:
-            if "skip" in current_square["event"].lower() or "lose" in current_square["event"].lower():
+            st.info(f"Event on {current_square['name']}: {current_square['event']}")
+            # Αν το event περιέχει λέξεις "skip" ή "delay" τότε παραλείπεται ο γύρος
+            if "skip" in current_square["event"].lower() or "delay" in current_square["event"].lower() or "lose" in current_square["event"].lower():
                 st.session_state["skip_turn"] = True
 
-# --------------------------------------
-# 6) Εμφάνιση Πληροφορίας
-# --------------------------------------
+# Εμφάνιση τρέχουσας θέσης
 current_sq = board_squares[st.session_state["boat_index"]]
 st.write(f"**Boat is now at**: {current_sq['name']}")
 if current_sq["event"]:
