@@ -2,6 +2,22 @@ import streamlit as st
 import random
 import folium
 from streamlit_folium import st_folium
+import math
+
+# ---------- Utility Functions ----------
+def haversine_distance_km(lat1, lon1, lat2, lon2):
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (math.sin(d_lat/2)**2 +
+         math.cos(math.radians(lat1)) *
+         math.cos(math.radians(lat2)) *
+         math.sin(d_lon/2)**2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return 6371.0 * c  # Earth radius in km
+
+def distance_nm(lat1, lon1, lat2, lon2):
+    km = haversine_distance_km(lat1, lon1, lat2, lon2)
+    return km * 0.539957  # μετατροπή σε ναυτικά μίλια
 
 # ---------- Ορισμός Προφίλ στο Session State ----------
 if "profiles" not in st.session_state:
@@ -12,13 +28,16 @@ if "profiles" not in st.session_state:
             "likes": 0,
             "shares": 0,
             "badges": [],
-            # Επιπλέον στοιχεία για την καμπάνια
+            # Social στατιστικά
             "social_stats": {
                 "facebook_friends": 0,
                 "instagram_followers": 0,
                 "adonboard_friends": 0,
-                "posting_frequency": "Never"  # ή "Daily", "Weekly", κλπ.
-            }
+                "posting_frequency": "Never"
+            },
+            # Νέα στατιστικά για καμπάνιες
+            "campaigns_joined": 0,
+            "impressions": 0  # συνολικά impressions
         }
     }
 
@@ -27,6 +46,8 @@ if "boat_index" not in st.session_state:
     st.session_state["boat_index"] = 0
 if "skip_turn" not in st.session_state:
     st.session_state["skip_turn"] = False
+if "total_nm_traveled" not in st.session_state:
+    st.session_state["total_nm_traveled"] = 0.0  # συνολικά ναυτικά μίλια
 
 # ---------- Επιλογή Ξεκινήματος Ρόλου ----------
 starting_role = st.selectbox("Select Your Starting Role:", 
@@ -43,8 +64,10 @@ st.write(f"**Role:** {profile['role']}")
 st.write(f"**Ad Score:** {profile['ad_score']}")
 st.write(f"**Likes:** {profile['likes']}")
 st.write(f"**Shares:** {profile['shares']}")
+st.write(f"**Campaigns Joined:** {profile['campaigns_joined']}")
+st.write(f"**Impressions:** {profile['impressions']}")
 social = profile["social_stats"]
-st.write(f"**Social Stats:** Facebook Friends: {social['facebook_friends']}, Instagram Followers: {social['instagram_followers']}, AdOnBoard Friends: {social['adonboard_friends']}")
+st.write(f"**Social Stats:** Facebook: {social['facebook_friends']}, Instagram: {social['instagram_followers']}, AdOnBoard: {social['adonboard_friends']}")
 st.write(f"**Posting Frequency:** {social['posting_frequency']}")
 if profile["badges"]:
     st.write("**Badges:** " + ", ".join(profile["badges"]))
@@ -71,6 +94,7 @@ board_squares = [
 ]
 
 st.markdown(f"**Current Board Position:** {board_squares[st.session_state['boat_index']]['name']}")
+st.markdown(f"**Total NM Traveled:** {st.session_state['total_nm_traveled']:.2f} NM")
 
 # ---------- Δημιουργία Χάρτη ----------
 center_coords = board_squares[0]["coords"]
@@ -115,31 +139,45 @@ folium.Marker(
 
 st_folium(m, width=800, height=500)
 
-# ---------- Λογική Ρόλων & Ρίψη Ζαριού ----------
+# ---------- Λογική Ρίψης Ζαριού & Ενημέρωση στατιστικών ----------
 if st.button("Roll the Dice"):
     if st.session_state["skip_turn"]:
         st.warning("You must skip this turn due to a previous event!")
         st.session_state["skip_turn"] = False
     else:
+        # Αποθήκευση προηγούμενης θέσης για υπολογισμό διανυθεισών NM
+        prev_index = st.session_state["boat_index"]
+        prev_coords = board_squares[prev_index]["coords"]
+        
         dice = random.randint(1, 6)
         st.success(f"You rolled: {dice}")
         new_index = st.session_state["boat_index"] + dice
         if new_index >= len(board_squares):
             new_index = len(board_squares) - 1
         st.session_state["boat_index"] = new_index
+        
+        # Υπολογισμός επιπλέον διανυθεισών NM
+        new_coords = board_squares[new_index]["coords"]
+        additional_nm = distance_nm(prev_coords[0], prev_coords[1], new_coords[0], new_coords[1])
+        st.session_state["total_nm_traveled"] += additional_nm
+        
         current_square = board_squares[new_index]
         st.info(f"Boat landed on: {current_square['name']}")
         
         event_text = current_square["event"].lower()
-        # Έλεγχος για αρνητικά events
+        # Έλεγχος αρνητικών events
         if "lose a turn" in event_text or "skip turn" in event_text or "storm" in event_text:
             st.info("Event: You lose your turn!")
             st.session_state["skip_turn"] = True
         if "bonus: advance" in event_text:
             st.success("Bonus: Advance 1 square!")
             st.session_state["boat_index"] = min(new_index + 1, len(board_squares) - 1)
+            # Ενημέρωση των NM για το bonus move
+            bonus_coords = board_squares[st.session_state["boat_index"]]["coords"]
+            additional_nm_bonus = distance_nm(new_coords[0], new_coords[1], bonus_coords[0], bonus_coords[1])
+            st.session_state["total_nm_traveled"] += additional_nm_bonus
         
-        # Εάν είναι Ad Zone, δώσε επιλογές για "Run Ad" και "Join Ad Campaign"
+        # Εάν το κουτάκι είναι Ad Zone, δώσε επιλογές για "Run Ad" και "Join Ad Campaign"
         if "ad zone" in event_text:
             if st.button("Run Ad", key=f"run_ad_{new_index}"):
                 added_score = 10
@@ -174,8 +212,31 @@ if st.button("Roll the Dice"):
                         st.session_state["profiles"]["player"]["social_stats"]["posting_frequency"] = posting_freq
                         bonus_campaign = 20
                         st.session_state["profiles"]["player"]["ad_score"] += bonus_campaign
-                        st.success(f"Campaign joined! Bonus +{bonus_campaign} ad score. Your social stats have been updated.")
+                        # Ενημέρωση στατιστικών καμπάνιας
+                        st.session_state["profiles"]["player"]["campaigns_joined"] += 1
+                        campaign_impressions = random.randint(1000, 5000)
+                        st.session_state["profiles"]["player"]["impressions"] += campaign_impressions
+                        st.success(f"Campaign joined! Bonus +{bonus_campaign} ad score, +{campaign_impressions} impressions.")
         
+    # Ελέγχουμε εάν έχουμε φτάσει στο τελικό κουτάκι (Finish)
+    if st.session_state["boat_index"] == len(board_squares) - 1:
+        st.markdown("## Final Scoreboard")
+        st.write(f"Total Ad Campaigns Participated: {st.session_state['profiles']['player']['campaigns_joined']}")
+        st.write(f"Total Impressions: {st.session_state['profiles']['player']['impressions']}")
+        st.write(f"Total Nautical Miles Traveled: {st.session_state['total_nm_traveled']:.2f} NM")
+        if st.button("Restart Game"):
+            # Επαναφορά όλων των session state μεταβλητών
+            for key in ["boat_index", "skip_turn", "total_nm_traveled"]:
+                st.session_state[key] = 0 if key != "total_nm_traveled" else 0.0
+            # Επαναφορά προφίλ (εκτός του social stats που μπορεί να παραμείνουν, αν επιθυμείς reset και αυτών)
+            st.session_state["profiles"]["player"]["ad_score"] = 0
+            st.session_state["profiles"]["player"]["likes"] = 0
+            st.session_state["profiles"]["player"]["shares"] = 0
+            st.session_state["profiles"]["player"]["campaigns_joined"] = 0
+            st.session_state["profiles"]["player"]["impressions"] = 0
+            st.session_state["profiles"]["player"]["role"] = "Passenger"
+            st.success("Game restarted!")
+    
     current_sq = board_squares[st.session_state["boat_index"]]
     st.write(f"**Boat is now at:** {current_sq['name']}")
     st.write(f"**Square Event:** {current_sq['event']}")
@@ -187,6 +248,8 @@ if st.button("Roll the Dice"):
     st.write(f"**Ad Score:** {profile['ad_score']}")
     st.write(f"**Likes:** {profile['likes']}")
     st.write(f"**Shares:** {profile['shares']}")
+    st.write(f"**Campaigns Joined:** {profile['campaigns_joined']}")
+    st.write(f"**Impressions:** {profile['impressions']}")
     social = profile["social_stats"]
     st.write(f"**Social Stats:** Facebook: {social['facebook_friends']}, Instagram: {social['instagram_followers']}, AdOnBoard: {social['adonboard_friends']}")
     st.write(f"**Posting Frequency:** {social['posting_frequency']}")
