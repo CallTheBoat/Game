@@ -3,38 +3,44 @@ import random
 import folium
 from streamlit_folium import st_folium
 
-def board_game_simulation():
-    st.subheader("Enhanced Board Game Simulation")
-    
-    # Ορισμός μεγέθους κουτιών και χρωματικής παλέτας
-    BOX_SIZE = 0.03  # Λίγο μεγαλύτερο για πιο εντυπωσιακή απεικόνιση
+# ---------- Enhanced Interactive Board Game Simulation ----------
+def enhanced_board_game():
+    st.subheader("Interactive Maritime Board Game")
+
+    # Ορισμός μεγέθους κουτιών (squares) και χρωματικής παλέτας
+    BOX_SIZE = 0.03  # Για πιο εντυπωσιακή απεικόνιση
     box_colors = ['#a8dadc', '#f1faee', '#457b9d', '#e63946', '#2a9d8f', '#ffb703']
     
-    # Ορισμός board squares: 6 κουτάκια με τρία νησιά (στην 0, 2 και 4) και ενδιάμεσα event squares
+    # Ορισμός board squares: 10 κουτάκια με διάφορα events και επιλογές ρόλων
     board_squares = [
-        {"name": "Santorini", "coords": (36.3932, 25.4615), "event": ""},
-        {"name": "Calm Waters", "coords": (36.65, 26.2), "event": "Nothing happens."},
+        {"name": "Santorini", "coords": (36.3932, 25.4615), "event": "Start"},
+        {"name": "Calm Waters", "coords": (36.50, 25.55), "event": "Nothing happens."},
         {"name": "Mykonos", "coords": (37.4467, 25.3289), "event": "Option: Become Ship Owner"},
-        {"name": "Stormy Seas", "coords": (37.0, 26.5), "event": "Lose a turn."},
+        {"name": "Choppy Seas", "coords": (36.70, 25.60), "event": "Waves! Lose a turn."},
         {"name": "Rhodes", "coords": (36.4349, 28.2176), "event": "Option: Become Sponsor"},
-        {"name": "Harbor", "coords": (36.80, 27.0), "event": "Bonus: Advance 1 square"}
+        {"name": "Stormy Waters", "coords": (36.80, 27.10), "event": "Severe storm! Skip turn."},
+        {"name": "Mystery Island", "coords": (36.90, 27.50), "event": "Find treasure! Advance 1 square."},
+        {"name": "Calm Harbor", "coords": (37.00, 27.80), "event": "Rest and recover."},
+        {"name": "Crete", "coords": (35.2401, 24.8093), "event": "Option: Become Ship Owner"},
+        {"name": "Port", "coords": (35.50, 25.00), "event": "Finish – No event."}
     ]
     
-    # Αρχικοποίηση session state για το παιχνίδι αν δεν υπάρχουν ήδη
+    # Αρχικοποίηση session state αν δεν υπάρχουν ήδη
     if "boat_index_board" not in st.session_state:
         st.session_state["boat_index_board"] = 0
     if "skip_turn_board" not in st.session_state:
         st.session_state["skip_turn_board"] = False
     if "current_role" not in st.session_state:
         st.session_state["current_role"] = "Passenger"
+
+    st.markdown(f"**Current Role:** {st.session_state['current_role']}")
+    st.markdown(f"**Current Square:** {board_squares[st.session_state['boat_index_board']]['name']}")
     
-    st.write(f"**Current Role:** {st.session_state['current_role']}")
-    
-    # Δημιουργία χάρτη με κεντρική τοποθέτηση στο πρώτο κουτάκι
+    # Δημιουργία χάρτη: Κέντρο στο πρώτο κουτάκι
     center_coords = board_squares[0]["coords"]
-    m = folium.Map(location=center_coords, zoom_start=7, tiles="cartodbpositron")
+    m = folium.Map(location=center_coords, zoom_start=6, tiles="cartodbpositron")
     
-    # Σχεδίαση κάθε κουτιού ως ορθογώνιο με όμορφα χρώματα και custom popup HTML
+    # Σχεδίαση κάθε κουτιού ως ορθογώνιο με όμορφα χρώματα και custom popup
     for i, square in enumerate(board_squares):
         lat, lon = square["coords"]
         bounds = [(lat - BOX_SIZE, lon - BOX_SIZE), (lat + BOX_SIZE, lon + BOX_SIZE)]
@@ -42,7 +48,7 @@ def board_game_simulation():
         popup_html = f"""
         <div style="font-family: Arial; font-size: 14px; text-align: center">
             <strong>{square['name']}</strong><br>
-            <em>{square['event'] if square['event'] else "No event"}</em>
+            <em>{square['event']}</em>
         </div>
         """
         folium.Rectangle(
@@ -55,7 +61,7 @@ def board_game_simulation():
             tooltip=f"{i}. {square['name']}",
             popup=folium.Popup(popup_html, max_width=200)
         ).add_to(m)
-        # Εμφάνιση ονόματος στο κέντρο του κουτιού με DivIcon
+        # Προσθήκη ονόματος στο κέντρο του κουτιού
         folium.Marker(
             [lat, lon],
             icon=folium.DivIcon(
@@ -73,7 +79,7 @@ def board_game_simulation():
     
     st_folium(m, width=800, height=500)
     
-    # Ρίψη ζαριού και μετακίνηση
+    # Ρίψη ζαριού & μετακίνηση του πλοίου
     if st.button("Roll the Dice (Board Game)"):
         if st.session_state["skip_turn_board"]:
             st.warning("You must skip this turn due to a previous event!")
@@ -83,40 +89,52 @@ def board_game_simulation():
             st.success(f"You rolled: {dice}")
             new_index = st.session_state["boat_index_board"] + dice
             if new_index >= len(board_squares):
-                new_index = len(board_squares) - 1  # παραμένουμε στο τελευταίο κουτάκι
+                new_index = len(board_squares) - 1  # Μένουμε στο τελευταίο κουτάκι
             st.session_state["boat_index_board"] = new_index
             current_square = board_squares[new_index]
             st.info(f"Boat landed on: {current_square['name']}")
             
-            if current_square["event"]:
-                st.info(f"Event: {current_square['event']}")
-                # Αν το event είναι "Lose a turn", ορίζουμε skip turn
-                if "lose" in current_square["event"].lower():
-                    st.session_state["skip_turn_board"] = True
-                # Αν υπάρχει bonus "Advance", προχωράμε επιπλέον 1 κουτάκι
-                if "advance" in current_square["event"].lower():
-                    st.session_state["boat_index_board"] = min(new_index + 1, len(board_squares) - 1)
-                    st.success("Bonus: Advance 1 square!")
-                # Εάν το event δίνει επιλογή αλλαγής ρόλου:
-                if "become ship owner" in current_square["event"].lower():
-                    if st.button("Become Ship Owner", key="ship_owner"):
-                        st.session_state["current_role"] = "Ship Owner"
-                        st.success("You are now a Ship Owner!")
-                if "become sponsor" in current_square["event"].lower():
-                    if st.button("Become Sponsor", key="sponsor"):
-                        st.session_state["current_role"] = "Sponsor"
-                        st.success("You are now a Sponsor!")
-                        
+            # Ελέγχουμε events και δίνουμε επιλογές αλλαγής ρόλου αν υπάρχουν
+            event_text = current_square["event"].lower()
+            if "lose" in event_text or "skip" in event_text or "storm" in event_text:
+                st.info("Event: You lose your turn!")
+                st.session_state["skip_turn_board"] = True
+            if "advance" in event_text:
+                st.success("Bonus: Advance 1 square!")
+                st.session_state["boat_index_board"] = min(new_index + 1, len(board_squares) - 1)
+            # Δυνατότητα αλλαγής ρόλου στα συγκεκριμένα κουτάκια
+            if "become ship owner" in event_text:
+                if st.button("Become Ship Owner", key=f"owner_{new_index}"):
+                    st.session_state["current_role"] = "Ship Owner"
+                    st.success("Role changed: You are now a Ship Owner!")
+            if "become sponsor" in event_text:
+                if st.button("Become Sponsor", key=f"sponsor_{new_index}"):
+                    st.session_state["current_role"] = "Sponsor"
+                    st.success("Role changed: You are now a Sponsor!")
+                    
         current_sq = board_squares[st.session_state["boat_index_board"]]
         st.write(f"**Boat is now at:** {current_sq['name']}")
-        if current_sq["event"]:
-            st.write(f"**Square Event:** {current_sq['event']}")
-        else:
-            st.write("No special event here.")
+        st.write(f"**Event:** {current_sq['event']}")
+    
+    # Εάν ο τρέχων ρόλος είναι Sponsor, εμφάνισε Advertising Dashboard
+    if st.session_state["current_role"] == "Sponsor":
+        st.markdown("### Advertising Dashboard")
+        reach = random.randint(5000, 50000)
+        st.metric("Potential Engagement", f"{reach} impressions")
+        st.write("Select a Passenger for Sponsored Content:")
+        passengers = ["Dimitris Chatzi", "Maria Kosta", "Alex Papadopoulos"]
+        selected_passenger = st.selectbox("Select a Passenger:", passengers, key="dashboard_passenger")
+        engagement = random.randint(1000, 10000)
+        st.metric(f"Estimated Engagement for {selected_passenger}", f"{engagement} views")
 
 # ---------- Main App ----------
-st.set_page_config(page_title="Maritime Board Game Dashboard", layout="wide")
-st.title("Maritime Board Game Dashboard")
+st.set_page_config(page_title="Interactive Maritime Board Game", layout="wide")
+st.title("Interactive Maritime Board Game Dashboard")
 
-# Εκκίνηση του enhanced board game
-board_game_simulation()
+# Στην αρχή όλοι ξεκινούν ως Passenger. Μετά τα events μπορούν να αλλάξουν ρόλο.
+st.session_state["current_role"] = st.selectbox("Select Your Starting Role:", 
+                                                  ["Passenger", "Ship Owner", "Sponsor"],
+                                                  index=0, key="starting_role")
+st.markdown("**Note:** You start with the selected role, but you may change roles at specific board squares.")
+
+enhanced_board_game()
