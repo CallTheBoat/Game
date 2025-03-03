@@ -6,7 +6,20 @@ from streamlit_folium import st_folium
 # ---------- Ορισμός Προφίλ στο Session State ----------
 if "profiles" not in st.session_state:
     st.session_state["profiles"] = {
-        "player": {"role": "Passenger", "ad_score": 0, "likes": 0, "shares": 0, "badges": []}
+        "player": {
+            "role": "Passenger",
+            "ad_score": 0,
+            "likes": 0,
+            "shares": 0,
+            "badges": [],
+            # Επιπλέον στοιχεία για την καμπάνια
+            "social_stats": {
+                "facebook_friends": 0,
+                "instagram_followers": 0,
+                "adonboard_friends": 0,
+                "posting_frequency": "Never"  # ή "Daily", "Weekly", κλπ.
+            }
+        }
     }
 
 # ---------- Αρχικοποίηση Board Game Session State ----------
@@ -30,6 +43,9 @@ st.write(f"**Role:** {profile['role']}")
 st.write(f"**Ad Score:** {profile['ad_score']}")
 st.write(f"**Likes:** {profile['likes']}")
 st.write(f"**Shares:** {profile['shares']}")
+social = profile["social_stats"]
+st.write(f"**Social Stats:** Facebook Friends: {social['facebook_friends']}, Instagram Followers: {social['instagram_followers']}, AdOnBoard Friends: {social['adonboard_friends']}")
+st.write(f"**Posting Frequency:** {social['posting_frequency']}")
 if profile["badges"]:
     st.write("**Badges:** " + ", ".join(profile["badges"]))
 else:
@@ -142,12 +158,23 @@ if st.button("Roll the Dice"):
                     if st.button("Become Sponsor", key=f"sponsor_{new_index}"):
                         st.session_state["profiles"]["player"]["role"] = "Sponsor"
                         st.success("Role changed: You are now a Sponsor!")
-            # Νέο χαρακτηριστικό: Popup για συμμετοχή σε διαφημιστική καμπάνια
+            # Νέο χαρακτηριστικό: Join Ad Campaign
             if st.button("Join Ad Campaign", key=f"join_ad_{new_index}"):
-                # Ενημερώνουμε το προφίλ με επιπλέον bonus
-                bonus_score = 20
-                st.session_state["profiles"]["player"]["ad_score"] += bonus_score
-                st.success("You have joined the advertisement campaign trip with the ship! Bonus +20 ad score.")
+                st.markdown("#### Ad Campaign Participation")
+                with st.form(key=f"ad_campaign_form_{new_index}"):
+                    fb = st.number_input("Number of Facebook Friends", min_value=0, step=1)
+                    ig = st.number_input("Number of Instagram Followers", min_value=0, step=1)
+                    adon = st.number_input("Number of AdOnBoard Friends", min_value=0, step=1)
+                    posting_freq = st.selectbox("Posting Frequency", ["Daily", "Weekly", "Monthly", "Rarely"])
+                    submit_campaign = st.form_submit_button("Submit Campaign Info")
+                    if submit_campaign:
+                        st.session_state["profiles"]["player"]["social_stats"]["facebook_friends"] = fb
+                        st.session_state["profiles"]["player"]["social_stats"]["instagram_followers"] = ig
+                        st.session_state["profiles"]["player"]["social_stats"]["adonboard_friends"] = adon
+                        st.session_state["profiles"]["player"]["social_stats"]["posting_frequency"] = posting_freq
+                        bonus_campaign = 20
+                        st.session_state["profiles"]["player"]["ad_score"] += bonus_campaign
+                        st.success(f"Campaign joined! Bonus +{bonus_campaign} ad score. Your social stats have been updated.")
         
     current_sq = board_squares[st.session_state["boat_index"]]
     st.write(f"**Boat is now at:** {current_sq['name']}")
@@ -160,6 +187,9 @@ if st.button("Roll the Dice"):
     st.write(f"**Ad Score:** {profile['ad_score']}")
     st.write(f"**Likes:** {profile['likes']}")
     st.write(f"**Shares:** {profile['shares']}")
+    social = profile["social_stats"]
+    st.write(f"**Social Stats:** Facebook: {social['facebook_friends']}, Instagram: {social['instagram_followers']}, AdOnBoard: {social['adonboard_friends']}")
+    st.write(f"**Posting Frequency:** {social['posting_frequency']}")
     if profile["badges"]:
         st.write("**Badges:** " + ", ".join(profile["badges"]))
     else:
