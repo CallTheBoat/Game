@@ -1,11 +1,10 @@
 import streamlit as st
-import random
 import math
 import folium
 from streamlit_folium import st_folium
 from datetime import date, timedelta
 
-# ---------- Utility: minimal distance -----------
+# ---------------- Utility for minimal distance ----------------
 def distance_nm(lat1, lon1, lat2, lon2):
     d_lat = math.radians(lat2 - lat1)
     d_lon = math.radians(lon2 - lon1)
@@ -17,7 +16,7 @@ def distance_nm(lat1, lon1, lat2, lon2):
     dist_km = 6371.0 * c
     return dist_km * 0.539957
 
-# ---------- Session State -----------
+# ---------------- Initialize Session State ----------------
 if "current_square" not in st.session_state:
     st.session_state["current_square"] = 0
 
@@ -25,77 +24,121 @@ if "profile" not in st.session_state:
     st.session_state["profile"] = {
         "role": "Passenger",
         "ad_score": 0,
-        "likes": 0,
-        "shares": 0,
+        "likes": 10,      # Π.χ. ο παίκτης έχει 10 likes
+        "shares": 5,
         "campaigns_joined": 0,
-        "impressions": 0
+        "impressions": 200
     }
 
+# Ενεργή χορηγία (None αν δεν έχει δεχτεί)
 if "active_sponsor" not in st.session_state:
-    st.session_state["active_sponsor"] = None  # dict with sponsor details
+    st.session_state["active_sponsor"] = None
 
-if "sponsor_approval" not in st.session_state:
-    st.session_state["sponsor_approval"] = None  # "Approved" or "Rejected" or None
+# Έχει στείλει ο επιβάτης το προφίλ του στον χορηγό;
+if "profile_sent" not in st.session_state:
+    st.session_state["profile_sent"] = False
 
+# Απόφαση χορηγού (None = pending, "Approved" ή "Rejected")
+if "sponsor_decision" not in st.session_state:
+    st.session_state["sponsor_decision"] = None
+
+# Συνολική απόσταση
 if "total_nm" not in st.session_state:
     st.session_state["total_nm"] = 0.0
 
-# ---------- Create Tabs -----------
-tabs = st.tabs(["Board Game", "Sponsor Requirements"])
 
-# ========== TAB 2: Sponsor Requirements ==========
-with tabs[1]:
-    st.title("Sponsor Requirements")
+# ---------------- Tabs ----------------
+tabs = st.tabs(["Board Game", "Sponsor Requirements", "Sponsor Admin"])
+
+# ========== TAB 3: Sponsor Admin ========== 
+with tabs[2]:
+    st.title("Sponsor Admin Page")
+    st.info("This tab simulates the 'Sponsor' role, who sees the passenger's profile request if it was sent.")
     
-    # Εάν δεν υπάρχει καμπάνια, δεν εμφανίζει τίποτα
+    # Αν δεν υπάρχει ενεργή χορηγία, απλώς γράφουμε μήνυμα
     if st.session_state["active_sponsor"] is None:
-        st.info("No active sponsor campaign.")
+        st.warning("No active sponsor campaign. The passenger has not accepted any sponsor yet.")
+    else:
+        sponsor = st.session_state["active_sponsor"]
+        st.success(f"Sponsor: {sponsor['sponsor_name']} is waiting for the passenger's profile (if sent).")
+        
+        # Αν ο passenger έστειλε το προφίλ
+        if st.session_state["profile_sent"]:
+            st.markdown("### Passenger's Profile for Review")
+            p = st.session_state["profile"]
+            st.write(f"- Role: {p['role']}")
+            st.write(f"- ad_score: {p['ad_score']}")
+            st.write(f"- likes: {p['likes']}")
+            st.write(f"- shares: {p['shares']}")
+            st.write(f"- campaigns_joined: {p['campaigns_joined']}")
+            st.write(f"- impressions: {p['impressions']}")
+            
+            st.markdown("Decision:")
+            approve_btn = st.button("Approve Passenger")
+            reject_btn  = st.button("Reject Passenger")
+            
+            if approve_btn:
+                st.session_state["sponsor_decision"] = "Approved"
+                st.success("You (Sponsor) approved this passenger's profile!")
+            elif reject_btn:
+                st.session_state["sponsor_decision"] = "Rejected"
+                st.error("You (Sponsor) rejected this passenger's profile.")
+        else:
+            st.info("Passenger has NOT sent their profile yet (profile_sent = False). Nothing to review.")
+
+
+# ========== TAB 2: Sponsor Requirements (for the passenger) ==========
+with tabs[1]:
+    st.title("Sponsor Requirements (Passenger View)")
+    
+    # Αν δεν υπάρχει καμπάνια => κενό
+    if st.session_state["active_sponsor"] is None:
+        st.info("No active sponsor campaign right now.")
     else:
         sp = st.session_state["active_sponsor"]
-        st.success(f"Sponsor: {sp['sponsor_name']}")
+        st.success(f"Active Sponsor: {sp['sponsor_name']}")
         st.write(f"**Required Impressions**: {sp['required_impressions']}")
-        st.write(f"**Discount**: {sp['discount_percent']}% off boat costs")
-        st.write(f"**Duration**: {sp['duration_days']} days")
-        st.write(f"**Dates**: {sp['start_date']} → {sp['end_date']}")
-
+        st.write(f"**Discount**: {sp['discount_percent']}% discount")
+        st.write(f"**Duration**: {sp['duration_days']} days ({sp['start_date']} to {sp['end_date']})")
         st.markdown("### Sponsor Demands")
-        st.write(f"- **Posts per Day**: {sp['daily_posts']}")
-        st.write(f"- **Hours near Popular Beaches**: {sp['hours_near_beach']} / day")
-        st.write(f"- **Branded Materials**: {sp['tshirts']}")
-
-        # Επιπλέον κουμπί: "Send my Profile to Sponsor"
-        st.markdown("### Send Profile to Sponsor?")
-        send_btn = st.button("Send my Profile to Sponsor")
-        if send_btn:
-            # Τυχαία πιθανότητα έγκρισης/απόρριψης
-            approve_chance = random.random()
-            if approve_chance < 0.6:
-                st.session_state["sponsor_approval"] = "Approved"
-                st.success("Sponsor has APPROVED your profile! Congrats!")
-            else:
-                st.session_state["sponsor_approval"] = "Rejected"
-                st.error("Sponsor has REJECTED your profile. Sorry!")
+        st.write(f"- {sp['daily_posts']} posts/day")
+        st.write(f"- {sp['hours_near_beach']} hours near busy beaches daily")
+        st.write(f"- Materials: {sp['tshirts']}")
         
-        # Εμφάνιση αν έχουμε ήδη approval/rejection
-        if st.session_state["sponsor_approval"] == "Approved":
-            st.success("Your profile is ALREADY APPROVED by sponsor!")
-        elif st.session_state["sponsor_approval"] == "Rejected":
-            st.error("Your profile was REJECTED by sponsor.")
+        # Αν ο passenger έστειλε ήδη το προφίλ => δείχνουμε status
+        if st.session_state["profile_sent"]:
+            st.info("You have already sent your profile to the sponsor.")
+            
+            # Αν έχουμε απόφαση
+            decision = st.session_state["sponsor_decision"]
+            if decision == "Approved":
+                st.success("Sponsor has APPROVED your profile! Congrats!")
+            elif decision == "Rejected":
+                st.error("Sponsor has REJECTED your profile. Sorry!")
+            else:
+                st.warning("Waiting for sponsor to decide (pending).")
+        else:
+            st.markdown("### Send your profile to the sponsor?")
+            send_btn = st.button("Send My Profile to Sponsor")
+            if send_btn:
+                st.session_state["profile_sent"] = True
+                st.session_state["sponsor_decision"] = None
+                st.success("Profile sent to sponsor! Check the Sponsor Admin tab for the sponsor's decision.")
 
-# ========== TAB 1: Board Game ==========
+
+# ========== TAB 1: Board Game (Passenger) ==========
 with tabs[0]:
-    st.title("Minimal Board Game with Sponsor Demo")
-
-    # Route squares (2 squares)
+    st.title("Board Game - Minimal Demo")
+    
     squares = [
-        {"name": "Start", "coords": (36.45, 28.22)},
+        {"name": "Start",  "coords": (36.45, 28.22)},
         {"name": "Finish", "coords": (36.40, 28.15)}
     ]
     
     st.write(f"**Current Square**: {squares[st.session_state['current_square']]['name']}")
     st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
-
-    # Map
+    
+    # Folium map
     m = folium.Map(location=squares[0]["coords"], zoom_start=7)
     for sq in squares:
         folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
@@ -105,41 +148,34 @@ with tabs[0]:
         tooltip="Boat Position"
     ).add_to(m)
     st_folium(m, width=700, height=450)
-
-    # Profile
-    st.markdown("### Player Profile")
-    pr = st.session_state["profile"]
-    st.write(f"- Role: {pr['role']}")
-    st.write(f"- ad_score: {pr['ad_score']}")
-    st.write(f"- likes: {pr['likes']}")
-    st.write(f"- shares: {pr['shares']}")
-    st.write(f"- campaigns_joined: {pr['campaigns_joined']}")
-    st.write(f"- impressions: {pr['impressions']}")
-
-    # Roll Dice
+    
+    # Minimal profile view
+    st.markdown("### Player Profile (Quick View)")
+    p = st.session_state["profile"]
+    st.write(f"- ad_score: {p['ad_score']}, likes: {p['likes']}, shares: {p['shares']}, impressions: {p['impressions']}")
+    
+    # Roll the Dice => move from Start to Finish
     if st.button("Roll the Dice"):
         if st.session_state["current_square"] == 0:
-            # move to Finish
+            st.session_state["current_square"] = 1
             c1 = squares[0]["coords"]
             c2 = squares[1]["coords"]
             distnm = distance_nm(c1[0], c1[1], c2[0], c2[1])
             st.session_state["total_nm"] += distnm
-            st.session_state["current_square"] = 1
             st.success("Moved from Start to Finish!")
         else:
-            st.warning("Already at Finish!")
-
-    # Sponsor Offer
+            st.warning("Already at Finish.")
+    
+    # Σταθερή προσφορά χορηγού
     st.markdown("### Sponsor Offer")
     st.info("Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. Accept?")
     accept_btn = st.button("Yes, Accept Sponsor")
     decline_btn = st.button("No, Decline Sponsor")
-
+    
     if accept_btn:
-        # Δημιουργούμε τη χορηγία
         dur_days = 5
         startD = date.today()
-        endD = startD + timedelta(days=dur_days)
+        endD   = startD + timedelta(days=dur_days)
         st.session_state["active_sponsor"] = {
             "sponsor_name": "Vodafone",
             "required_impressions": 1000,
@@ -149,12 +185,34 @@ with tabs[0]:
             "end_date": endD,
             "daily_posts": 2,
             "hours_near_beach": 4,
-            "tshirts": "Vodafone T-shirts & Banners"
+            "tshirts": "Vodafone T-Shirts & Banners"
         }
-        # Reset sponsor_approval
-        st.session_state["sponsor_approval"] = None
-        st.success("Accepted sponsor from Vodafone! Go to 'Sponsor Requirements' tab to see details.")
+        # Reset to pending
+        st.session_state["profile_sent"]     = False
+        st.session_state["sponsor_decision"] = None
+        
+        st.success("You accepted the 'Vodafone' sponsor. Check 'Sponsor Requirements' tab for details.")
     elif decline_btn:
-        st.warning("Declined sponsor offer.")
+        st.warning("Declined the sponsor.")
 
-    st.markdown("Continue or check the second tab.")
+
+    # If we are at Finish => show short summary
+    if st.session_state["current_square"] == 1:
+        st.balloons()
+        st.subheader("Journey Completed!")
+        if st.button("Restart Game"):
+            # Reset everything
+            st.session_state["current_square"] = 0
+            st.session_state["total_nm"]       = 0.0
+            st.session_state["active_sponsor"] = None
+            st.session_state["profile_sent"]   = False
+            st.session_state["sponsor_decision"] = None
+            st.session_state["profile"] = {
+                "role": "Passenger",
+                "ad_score": 0,
+                "likes": 10,
+                "shares": 5,
+                "campaigns_joined": 0,
+                "impressions": 200
+            }
+            st.success("Restarted everything!")
