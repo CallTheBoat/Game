@@ -1,187 +1,130 @@
 import streamlit as st
 import random
-import time
-import math
 import folium
 from streamlit_folium import st_folium
 
-# 1) Σταθερες και Συναρτησεις
-EARTH_RADIUS_KM = 6371.0
-KM_TO_NM = 0.539957  # 1 km ~ 0.54 nautical miles
+# --------------------------------------
+# 1) Ορισμός "ταμπλό" (Squares) σε μορφή Monopoly
+# --------------------------------------
+# Κάθε "κουτάκι" έχει:
+# - name (π.χ. νησί ή συμβάν)
+# - coords (lat, lon)
+# - event (κείμενο γεγονότος, αν υπάρχει)
+board_squares = [
+    {
+        "name": "Santorini",
+        "coords": (36.3932, 25.4615),
+        "event": ""
+    },
+    {
+        "name": "Choppy Seas",
+        "coords": (36.50, 25.50),
+        "event": "Choppy seas! Skip next turn!"
+    },
+    {
+        "name": "Random Island #1",
+        "coords": (36.70, 25.60),
+        "event": ""
+    },
+    {
+        "name": "Storm Area",
+        "coords": (36.90, 25.70),
+        "event": "Storm - lose 1 turn!"
+    },
+    {
+        "name": "Mykonos",
+        "coords": (37.4467, 25.3289),
+        "event": ""
+    },
+]
 
-def haversine_distance_km(lat1, lon1, lat2, lon2):
-    """
-    Επιστρεφει την αποσταση σε χιλιομετρα (km) μεταξυ δυο σημειων
-    (lat1, lon1) - (lat2, lon2) με χρηση του τυπου haversine.
-    """
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    a = (math.sin(d_lat / 2) ** 2
-         + math.cos(math.radians(lat1))
-         * math.cos(math.radians(lat2))
-         * math.sin(d_lon / 2) ** 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    distance_km = EARTH_RADIUS_KM * c
-    return distance_km
+# --------------------------------------
+# 2) Αρχικές Ρυθμίσεις Streamlit
+# --------------------------------------
+st.set_page_config(page_title="Island Monopoly", layout="wide")
+st.title("Island Monopoly Board Game")
 
-def distance_nm(lat1, lon1, lat2, lon2):
-    """Υπολογιζει την αποσταση σε Ναυτικα Μιλια (NM) μεταξυ δυο σημειων."""
-    dist_km = haversine_distance_km(lat1, lon1, lat2, lon2)
-    return dist_km * KM_TO_NM
+st.markdown("""
+Παράδειγμα επιτραπέζιου τύπου "Monopoly" πάνω σε χάρτη:
+- Κάθε κουτάκι είναι νησί ή γεγονός.
+- Με κάθε ρίψη ζαριού το πλοίο προχωράει αντίστοιχα.
+- Αν "πέσεις" σε κουτάκι με event, εμφανίζεται μήνυμα.
+""")
 
-def load_css():
-    """Προαιρετικη φορτωση custom CSS."""
-    try:
-        with open("styles.css") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass
+# --------------------------------------
+# 3) Session State για το πλοίο
+# --------------------------------------
+# boat_index: σε ποιο κουτάκι βρισκόμαστε;
+if "boat_index" not in st.session_state:
+    st.session_state["boat_index"] = 0
 
-# 2) Ρυθμισεις σελιδας
-st.set_page_config(page_title="AdOnBoard - Futuristic UI", layout="wide")
-load_css()
+# skip_turn: αν είναι True, δεν μπορείς να παίξεις αυτόν τον γύρο (π.χ. λόγω storm)
+if "skip_turn" not in st.session_state:
+    st.session_state["skip_turn"] = False
 
-st.markdown("<h1 style='text-align: center;'>🚢 AdOnBoard - The Futuristic Experience</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Choose your role in the world of maritime advertising.</p>", unsafe_allow_html=True)
+# --------------------------------------
+# 4) Προβολή του Ταμπλό (Χάρτης)
+# --------------------------------------
+# Τοποθετούμε markers για ΟΛΑ τα squares
+# και ξεχωριστό marker για το πλοίο.
+start_coords = board_squares[0]["coords"]
+m = folium.Map(location=start_coords, zoom_start=7)
 
-# 3) Session State
-if "routes" not in st.session_state:
-    # Διαδρομες προεπιλογης
-    st.session_state["routes"] = {
-        "Santorini - Mykonos": [(36.3932, 25.4615), (37.4467, 25.3289)],
-        "Rhodes - Athens": [(36.4349, 28.2176), (37.9838, 23.7275)]
-    }
+# Προσθήκη markers για όλα τα νησιά/κουτάκια:
+for i, square in enumerate(board_squares):
+    folium.Marker(
+        square["coords"],
+        tooltip=f"{i}. {square['name']}",
+        popup=square["event"] if square["event"] else f"{square['name']} (No event)"
+    ).add_to(m)
 
-if "selected_route" not in st.session_state:
-    # Αρχικη επιλεγμενη διαδρομη
-    st.session_state["selected_route"] = list(st.session_state["routes"].keys())[0]
-
-if "current_dist_nm" not in st.session_state:
-    # Ολικη αποσταση διαδρομης (NM)
-    coords = st.session_state["routes"][st.session_state["selected_route"]]
-    st.session_state["current_dist_nm"] = distance_nm(*coords[0], *coords[1])
-
-if "progress_nm" not in st.session_state:
-    # Διανυθεισα αποσταση σε NM
-    st.session_state["progress_nm"] = 0.0
-
-# 4) Επιλογη Ρολου
-role = st.selectbox("Select Your Role:", ["Passenger", "Ship Owner", "Sponsor"])
-
-if role == "Passenger":
-    st.write("Explore destinations, earn rewards, and interact with sponsors.")
-elif role == "Ship Owner":
-    st.write("List your routes, attract sponsors, and maximize profits.")
-elif role == "Sponsor":
-    st.write("Choose routes, advertise your brand, and track engagement.")
-
-# 5) Προσθηκη Δυναμικης Διαδρομης
-st.markdown("---")
-st.subheader("Add a New Route Dynamically")
-
-with st.form("route_form"):
-    route_name = st.text_input("Route Name", placeholder="e.g. Corfu - Patras")
-    start_lat = st.number_input("Start Latitude", value=36.0)
-    start_lon = st.number_input("Start Longitude", value=25.0)
-    end_lat = st.number_input("End Latitude", value=37.0)
-    end_lon = st.number_input("End Longitude", value=25.5)
-    submitted = st.form_submit_button("Add Route")
-    if submitted:
-        if route_name.strip() != "":
-            st.session_state["routes"][route_name] = [(start_lat, start_lon), (end_lat, end_lon)]
-            st.success(f"Route '{route_name}' added successfully!")
-        else:
-            st.warning("Please enter a valid route name.")
-
-st.markdown("---")
-
-# 6) Επιλογη Διαδρομης
-selected_route = st.selectbox("Choose a Route:", list(st.session_state["routes"].keys()))
-
-# Αν αλλαξει η διαδρομη, κανουμε reset την προοδο
-if selected_route != st.session_state["selected_route"]:
-    st.session_state["selected_route"] = selected_route
-    coords = st.session_state["routes"][selected_route]
-    st.session_state["current_dist_nm"] = distance_nm(*coords[0], *coords[1])
-    st.session_state["progress_nm"] = 0.0
-
-# 7) Φορτωση συντεταγμενων
-coords = st.session_state["routes"][st.session_state["selected_route"]]
-total_dist_nm = st.session_state["current_dist_nm"]
-progress_nm = st.session_state["progress_nm"]
-
-# Υπολογισμος των NM που απομενουν
-remaining_nm = total_dist_nm - progress_nm
-if remaining_nm < 0:
-    remaining_nm = 0
-
-st.write(f"**Total Route Distance:** ~{total_dist_nm:.2f} NM")
-st.write(f"**Ship has traveled:** ~{progress_nm:.2f} NM")
-st.write(f"**Remaining:** ~{remaining_nm:.2f} NM")
-
-# 8) Δημιουργια Χαρτη
-m = folium.Map(location=coords[0], zoom_start=6)
-
-# Σημειο Αφετηριας & Προορισμου
-folium.Marker(coords[0], tooltip="Start").add_to(m)
-folium.Marker(coords[1], tooltip="Destination").add_to(m)
-
-# Υπολογιζουμε την τρεχουσα θεση του σκαφους απο το fraction της διαδρομης
-if total_dist_nm > 0:
-    fraction = progress_nm / total_dist_nm
-    if fraction > 1:
-        fraction = 1.0
-else:
-    fraction = 0
-
-lat1, lon1 = coords[0]
-lat2, lon2 = coords[1]
-current_lat = lat1 + fraction * (lat2 - lat1)
-current_lon = lon1 + fraction * (lon2 - lon1)
-
-# Marker τρεχουσας θεσης
+# Marker για τη ΘΕΣΗ του πλοίου
+boat_square = board_squares[st.session_state["boat_index"]]
+boat_coords = boat_square["coords"]
 folium.Marker(
-    [current_lat, current_lon],
-    icon=folium.Icon(color="blue"),
-    tooltip=f"Ship Position: {progress_nm:.2f} / {total_dist_nm:.2f} NM"
+    boat_coords,
+    icon=folium.Icon(color="blue", icon="ship", prefix='fa'),
+    tooltip="Boat Position",
+    popup=f"Current: {boat_square['name']}"
 ).add_to(m)
 
-# 9) Ριψη Ζαριου & Μετακινηση
-if st.button("Roll the Dice 🎲"):
-    dice_value = random.randint(1, 6)
-    st.success(f"You rolled: {dice_value}")
-
-    # Μετακινουμαστε κατα dice_value NM ή μεχρι το τελος
-    move_nm = min(dice_value, remaining_nm)
-    st.session_state["progress_nm"] += move_nm
-
-    st.info(f"The ship moved {move_nm:.2f} NM forward.")
-
-# 10) Προβολη Χαρτη
+# Εμφάνιση Χάρτη
 st_folium(m, width=800, height=500)
 
-# 11) Ενδεχομενη Διαφημιση (Sponsor)
-if role == "Sponsor":
-    st.markdown("## 📢 Advertising Dashboard")
-    st.write("View potential reach based on your chosen route.")
-    
-    reach = random.randint(5000, 50000)
-    st.metric("Potential Engagement", f"{reach} impressions")
-
-    if st.button("Start Campaign 🚀"):
-        st.success("Campaign Launched Successfully!")
-
-    st.markdown("## 🎭 Choose Passengers for Sponsored Content")
-    passengers = ["Dimitris Chatzi", "Maria Kosta", "Alex Papadopoulos"]
-    selected_passenger = st.selectbox("Select a Passenger:", passengers)
-    
-    engagement = random.randint(1000, 10000)
-    st.metric(f"Estimated Engagement for {selected_passenger}", f"{engagement} views")
-
-# 12) Οπτικο Εφε (iframe)
+# --------------------------------------
+# 5) Κουμπί Roll the Dice
+# --------------------------------------
 st.markdown("---")
-st.markdown("""
-<iframe src="https://lottiefiles.com/animations/boat-sailing"
-        width="100%" height="400" frameborder="0" allowfullscreen>
-</iframe>
-""", unsafe_allow_html=True)
+if st.button("Roll the Dice"):
+    if st.session_state["skip_turn"]:
+        # Αν πρέπει να παρακάμψουμε αυτόν τον γύρο
+        st.warning("You must skip this turn due to a previous event!")
+        st.session_state["skip_turn"] = False  # Ακυρώνουμε το skip για επόμενο γύρο
+    else:
+        dice = random.randint(1, 6)
+        st.success(f"You rolled: {dice}")
+        # Μετακίνηση του πλοίου
+        new_index = st.session_state["boat_index"] + dice
+        # Αν ξεπεράσουμε το τελευταίο κουτάκι, παραμένουμε στο τέλος
+        if new_index >= len(board_squares):
+            new_index = len(board_squares) - 1
+
+        st.session_state["boat_index"] = new_index
+        current_square = board_squares[new_index]
+
+        # Ελέγχουμε αν υπάρχει event
+        if current_square["event"]:
+            st.info(f"Event: {current_square['event']}")
+            # Αν το event είναι "skip turn" ή "lose turn", μπορείς να βάλεις λογική εδώ:
+            if "skip" in current_square["event"].lower() or "lose" in current_square["event"].lower():
+                st.session_state["skip_turn"] = True
+
+# --------------------------------------
+# 6) Εμφάνιση Πληροφορίας
+# --------------------------------------
+current_sq = board_squares[st.session_state["boat_index"]]
+st.write(f"**Boat is now at**: {current_sq['name']}")
+if current_sq["event"]:
+    st.write(f"**Square Event**: {current_sq['event']}")
+else:
+    st.write("No special event here.")
