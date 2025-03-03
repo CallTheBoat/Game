@@ -5,38 +5,48 @@ from datetime import date, timedelta
 import folium
 from streamlit_folium import st_folium
 
-# ========== Utility Functions ==========
+# ========== Βοηθητικές Συναρτήσεις ==========
 def haversine_distance_km(lat1, lon1, lat2, lon2):
     d_lat = math.radians(lat2 - lat1)
     d_lon = math.radians(lon2 - lon1)
-    a = (math.sin(d_lat/2)**2 +
+    a = (math.sin(d_lat / 2) ** 2 +
          math.cos(math.radians(lat1)) *
          math.cos(math.radians(lat2)) *
-         math.sin(d_lon/2)**2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    dist_km = 6371.0 * c
-    return dist_km
+         math.sin(d_lon / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return 6371.0 * c
 
 def distance_nm(lat1, lon1, lat2, lon2):
-    """Υπολογίζει τη ναυτική απόσταση μεταξύ δύο συντεταγμένων."""
+    """Υπολογίζει απόσταση σε Ναυτικά Μίλια μεταξύ δύο σημείων."""
     km = haversine_distance_km(lat1, lon1, lat2, lon2)
     return km * 0.539957
 
 # ========== Session State ==========
+# Δείκτης πλοίου
 if "current_index" not in st.session_state:
     st.session_state["current_index"] = 0
+
+# Skip turn
 if "skip_turn" not in st.session_state:
     st.session_state["skip_turn"] = False
+
+# Συνολικά NM που έχουμε διανύσει
 if "total_nm_traveled" not in st.session_state:
     st.session_state["total_nm_traveled"] = 0.0
+
+# Scoreboard (λίστα από dict)
 if "scoreboard" not in st.session_state:
     st.session_state["scoreboard"] = []
-if "already_offered_campaign" not in st.session_state:
-    st.session_state["already_offered_campaign"] = False
-if "active_campaign" not in st.session_state:
-    st.session_state["active_campaign"] = None
 
-# Απλό προφίλ με βασικές μετρικές
+# Για να μην εμφανίζεται δεύτερη φορά η χορηγία στην ίδια ρίψη
+if "already_offered" not in st.session_state:
+    st.session_state["already_offered"] = False
+
+# Ενεργή χορηγία/καμπάνια
+if "active_sponsor" not in st.session_state:
+    st.session_state["active_sponsor"] = None
+
+# Βασικές μετρικές παίκτη
 if "profile" not in st.session_state:
     st.session_state["profile"] = {
         "role": "Passenger",
@@ -47,158 +57,167 @@ if "profile" not in st.session_state:
         "impressions": 0
     }
 
-# ========== Tabs ==========
-tabs = st.tabs(["Board Game", "Campaign Details"])
+# ========== Δημιουργία Δύο Καρτελών ==========
+tabs = st.tabs(["Board Game", "Sponsor Requirements"])
 
-# ========== TAB 2: Campaign Details ==========
+# ========== TAB 2: "Sponsor Requirements" ==========
 with tabs[1]:
-    st.subheader("Campaign Details")
-    if st.session_state["active_campaign"] is None:
-        st.info("No active campaign at the moment.")
+    st.subheader("Sponsor Requirements")
+    if st.session_state["active_sponsor"] is None:
+        st.info("No active sponsor campaign yet.")
     else:
-        camp = st.session_state["active_campaign"]
-        st.success(f"You accepted a campaign from **{camp['sponsor']}**!")
-        st.write(f"**Required Impressions**: {camp['required_impressions']}")
-        st.write(f"**Discount**: {camp['discount_percent']}%")
-        st.write(f"**Duration**: {camp['duration_days']} days")
-        st.write(f"**Dates**: {camp['start_date']} to {camp['end_date']}")
-        st.write(f"**Beaches**: {', '.join(camp['beaches'])}")
-        st.write(f"**Materials**: {camp['materials']}")
-        st.write("***Now you can gather impressions to reach the sponsor's goal!***")
+        sponsor_data = st.session_state["active_sponsor"]
+        st.success(f"You accepted a sponsor from {sponsor_data['sponsor_name']}!")
+        st.write(f"**Required Impressions**: {sponsor_data['required_impressions']}")
+        st.write(f"**Discount**: {sponsor_data['discount_percent']}% on boat costs")
+        st.write(f"**Duration**: {sponsor_data['duration_days']} days")
+        st.write(f"**Dates**: {sponsor_data['start_date']} to {sponsor_data['end_date']}")
+        st.write(f"**Daily Posts**: {sponsor_data['daily_posts']} (photos, stories, etc.)")
+        st.write(f"**Hours near Popular Beaches**: {sponsor_data['hours_near_beach']} hours/day")
+        st.write(f"**Branded T-shirts**: {sponsor_data['tshirts']}")
+        st.info("You can continue rolling the dice in the Board Game tab.")
 
-# ========== TAB 1: Board Game ==========
+# ========== TAB 1: "Board Game" ==========
 with tabs[0]:
-    st.title("Extended Maritime Board Game")
-    
-    # -- Board squares (10 stops)
-    board_squares = [
-        {"name": "Rhodes Port", "coords": (36.4497, 28.2241), "event": "Start here."},
-        {"name": "Ialysos Coast", "coords": (36.4200, 28.1616), "event": "Ad Zone: Sponsor deals possible."},
+    st.title("Maritime Board Game (Sponsor Offers)")
+
+    # ---------- Εμφάνιση Προφίλ ----------
+    st.markdown("### Player Profile")
+    prof = st.session_state["profile"]
+    st.write(f"**Role:** {prof['role']}")
+    st.write(f"**Ad Score:** {prof['ad_score']}")
+    st.write(f"**Likes:** {prof['likes']}")
+    st.write(f"**Shares:** {prof['shares']}")
+    st.write(f"**Campaigns Joined:** {prof['campaigns_joined']}")
+    st.write(f"**Impressions:** {prof['impressions']}")
+
+    # ---------- Ορισμός Διαδρομής (8-10 στάσεις) ----------
+    route_squares = [
+        {"name": "Rhodes Port", "coords": (36.4497, 28.2241), "event": "Start Point"},
+        {"name": "Ialysos Coast", "coords": (36.4200, 28.1616), "event": "Ad Zone: Potential Sponsor"},
         {"name": "Kalithea Beach", "coords": (36.3825, 28.2472), "event": "Calm Waters."},
-        {"name": "Faliraki", "coords": (36.3435, 28.2110), "event": "Ad Zone: Potential Sponsor deals."},
-        {"name": "Lindos Bay", "coords": (36.0917, 28.0850), "event": "Lose a turn."},
-        {"name": "Prasonisi", "coords": (35.8873, 27.7876), "event": "Bonus: Advance 1 square."},
-        {"name": "Karpathos", "coords": (35.5077, 27.2139), "event": "Ad Zone: Run Ad or Join Campaign."},
-        {"name": "Kasos Island", "coords": (35.4055, 26.9255), "event": "Storm area! Skip turn."},
-        {"name": "Crete East", "coords": (35.2763, 26.1930), "event": "Nothing special."},
-        {"name": "Finish", "coords": (35.0, 26.0), "event": "Journey ends here."},
+        {"name": "Faliraki", "coords": (36.3435, 28.2110), "event": "Ad Zone: Potential Sponsor"},
+        {"name": "Lindos Bay", "coords": (36.0917, 28.0850), "event": "Lose a turn"},
+        {"name": "Prasonisi", "coords": (35.8873, 27.7876), "event": "Bonus: Advance 1 square"},
+        {"name": "Karpathos", "coords": (35.5077, 27.2139), "event": "Ad Zone: Potential Sponsor"},
+        {"name": "Finish", "coords": (35.00, 26.90), "event": "End of Journey"}
     ]
-    
-    st.write(f"**Current Position**: {board_squares[st.session_state['current_index']]['name']}")
+
+    st.write(f"**Current Position**: {route_squares[st.session_state['current_index']]['name']}")
     st.write(f"**Total NM Traveled**: {st.session_state['total_nm_traveled']:.2f}")
 
-    # -- Map
-    m = folium.Map(location=board_squares[0]["coords"], zoom_start=7)
-    for i, sq in enumerate(board_squares):
+    # ---------- Δημιουργία Χάρτη με Folium ----------
+    m = folium.Map(location=route_squares[0]["coords"], zoom_start=7)
+    for i, sq in enumerate(route_squares):
         folium.Marker(
             sq["coords"],
             tooltip=sq["name"],
             popup=sq["event"]
         ).add_to(m)
-    
-    # Marker for current position
-    current_coords = board_squares[st.session_state["current_index"]]["coords"]
+    currentC = route_squares[st.session_state["current_index"]]["coords"]
     folium.Marker(
-        current_coords,
+        currentC,
         icon=folium.Icon(color="blue", icon="ship", prefix="fa"),
-        tooltip=f"Boat is here: {board_squares[st.session_state['current_index']]['name']}"
+        tooltip="Current Boat Position"
     ).add_to(m)
-    
-    st_folium(m, width=700, height=500)
-    
-    # -- Roll dice
+    st_folium(m, width=700, height=450)
+
+    # ---------- Roll the Dice Button ----------
     if st.button("Roll the Dice"):
         if st.session_state["skip_turn"]:
-            st.warning("You skip this turn due to an event!")
+            st.warning("You skip this turn due to a previous event!")
             st.session_state["skip_turn"] = False
         else:
-            st.session_state["already_offered_campaign"] = False
-            dice = random.randint(1, 6)
-            st.success(f"You rolled: {dice}")
-            
+            st.session_state["already_offered"] = False
+            dice_val = random.randint(1, 6)
+            st.success(f"You rolled a {dice_val}.")
+
             old_index = st.session_state["current_index"]
-            new_index = old_index + dice
-            if new_index >= len(board_squares):
-                new_index = len(board_squares) - 1
-            
-            # Move step-by-step
+            new_index = old_index + dice_val
+            if new_index >= len(route_squares):
+                new_index = len(route_squares) - 1
+
+            # Βήμα-βήμα κίνηση
             for step in range(old_index, new_index):
-                c1 = board_squares[step]["coords"]
-                c2 = board_squares[step+1]["coords"]
-                dist_nm = distance_nm(c1[0], c1[1], c2[0], c2[1])
-                st.session_state["total_nm_traveled"] += dist_nm
+                c1 = route_squares[step]["coords"]
+                c2 = route_squares[step+1]["coords"]
+                distnm = distance_nm(c1[0], c1[1], c2[0], c2[1])
+                st.session_state["total_nm_traveled"] += distnm
+                # Scoreboard entry
                 st.session_state["scoreboard"].append({
-                    "Action": f"Moved from {board_squares[step]['name']} to {board_squares[step+1]['name']}",
-                    "Distance(NM)": round(dist_nm, 2),
+                    "Action": f"Moved from {route_squares[step]['name']} to {route_squares[step+1]['name']}",
+                    "Distance(NM)": round(distnm, 2),
                     "Likes": 0,
                     "Shares": 0,
                     "AdRun?": "No",
-                    "Points Gained": 0,
-                    "Total Points So Far": 0
+                    "Points Gained": 0
                 })
-            
+
             st.session_state["current_index"] = new_index
-            current_sq = board_squares[new_index]
-            st.info(f"Landed on: {current_sq['name']}")
+            new_sq = route_squares[new_index]
+            st.info(f"Boat arrived at {new_sq['name']}.")
             
             # Check event
-            if "lose a turn" in current_sq["event"].lower():
-                st.warning("You lose your next turn!")
+            if "lose a turn" in new_sq["event"].lower():
+                st.warning("Event: Lose a turn!")
                 st.session_state["skip_turn"] = True
-            if "bonus: advance" in current_sq["event"].lower():
-                st.success("Bonus: Advance 1 square!")
-                bonus_new_idx = min(new_index + 1, len(board_squares) - 1)
-                c1 = board_squares[new_index]["coords"]
-                c2 = board_squares[bonus_new_idx]["coords"]
-                dist_nm = distance_nm(c1[0], c1[1], c2[0], c2[1])
-                st.session_state["total_nm_traveled"] += dist_nm
-                st.info(f"Boat ended up at {board_squares[bonus_new_idx]['name']}")
-                st.session_state["current_index"] = bonus_new_idx
-            
-            # Potential sponsor zone (just an example)
-            if "ad zone" in current_sq["event"].lower():
-                run_ad_click = st.button("Run Ad")
-                if run_ad_click:
+            if "bonus: advance" in new_sq["event"].lower():
+                st.success("Bonus: Advance +1 square!")
+                bonus_idx = min(new_index + 1, len(route_squares) - 1)
+                cA = route_squares[new_index]["coords"]
+                cB = route_squares[bonus_idx]["coords"]
+                distNM2 = distance_nm(cA[0], cA[1], cB[0], cB[1])
+                st.session_state["total_nm_traveled"] += distNM2
+                st.session_state["current_index"] = bonus_idx
+                st.info(f"Ended up at {route_squares[bonus_idx]['name']} after bonus move.")
+
+            # Ad zone => maybe run an ad
+            if "ad zone" in new_sq["event"].lower():
+                if st.button("Run Ad"):
                     st.session_state["profile"]["ad_score"] += 10
                     st.session_state["profile"]["likes"] += 5
-                    st.session_state["profile"]["shares"] += 2
-                    st.success("Ran an Ad +10 ad_score, +5 likes, +2 shares.")
-            
-            # Chance to offer sponsor campaign (once per roll)
-            if not st.session_state["already_offered_campaign"]:
+                    st.session_state["profile"]["shares"] += 3
+                    st.success("Ran an Ad: +10 ad_score, +5 likes, +3 shares.")
+
+            # Τυχαία πιθανότητα να εμφανιστεί προσφορά
+            if not st.session_state["already_offered"]:
+                # Π.χ. 40% πιθανότητα
                 chance = random.random()
-                if chance < 0.5:  # 50% example
-                    sponsor_names = ["Vodafone", "Nike", "Adidas", "Coca-Cola", "Pepsi"]
-                    sponsor = random.choice(sponsor_names)
-                    required_impressions = random.randint(500, 2000)
-                    discount_percent = random.choice([20, 30, 50, 70])
-                    st.info(f"**Sponsored Campaign Offer**: {sponsor} needs {required_impressions} impressions for a {discount_percent}% discount. Accept?")
-                    
-                    accept = st.button(f"Yes, accept {sponsor} offer")
-                    decline = st.button("No, keep rolling")
-                    
-                    if accept:
-                        duration_days = random.randint(2, 7)
-                        start_date = date.today()
-                        end_date = start_date + timedelta(days=duration_days)
-                        st.session_state["active_campaign"] = {
-                            "sponsor": sponsor,
-                            "required_impressions": required_impressions,
-                            "discount_percent": discount_percent,
-                            "duration_days": duration_days,
-                            "start_date": start_date,
-                            "end_date": end_date,
-                            "beaches": ["Lindos", "Faliraki", "Tsambika"],
-                            "materials": f"{sponsor} T-shirts & Banners"
+                if chance < 0.4:
+                    sponsor_list = ["Vodafone", "Nike", "Coca-Cola", "Adidas"]
+                    sponsor_name = random.choice(sponsor_list)
+                    needed_impressions = random.randint(500, 3000)
+                    disc = random.choice([20, 30, 50, 60, 70])
+                    daily_posts = random.randint(1, 3)
+                    hours_beach = random.randint(2, 8)
+                    st.info(f"Sponsor Offer: {sponsor_name} wants {needed_impressions} impressions for a {disc}% discount. Accept?")
+
+                    yes_button = st.button(f"Yes, accept {sponsor_name} offer")
+                    no_button = st.button("No, ignore sponsor")
+
+                    if yes_button:
+                        dur_days = random.randint(3, 7)
+                        startD = date.today()
+                        endD = startD + timedelta(days=dur_days)
+                        st.session_state["active_sponsor"] = {
+                            "sponsor_name": sponsor_name,
+                            "required_impressions": needed_impressions,
+                            "discount_percent": disc,
+                            "duration_days": dur_days,
+                            "start_date": startD,
+                            "end_date": endD,
+                            "daily_posts": daily_posts,
+                            "hours_near_beach": hours_beach,
+                            "tshirts": f"T-shirts with {sponsor_name} logo",
                         }
-                        st.success(f"You accepted {sponsor} campaign! Go to 'Campaign Details' tab for more info.")
-                    elif decline:
-                        st.warning("Declined the campaign.")
-                    
-                st.session_state["already_offered_campaign"] = True
-            
-            # Check if finished
-            if st.session_state["current_index"] == len(board_squares) - 1:
+                        st.success(f"You accepted the {sponsor_name} campaign. Check 'Sponsor Requirements' tab!")
+                    elif no_button:
+                        st.warning("You declined the sponsor offer.")
+
+                st.session_state["already_offered"] = True
+
+            # Check if end
+            if st.session_state["current_index"] == len(route_squares) - 1:
                 st.balloons()
                 st.subheader("Journey Completed!")
                 st.write(f"**Total NM**: {st.session_state['total_nm_traveled']:.2f}")
@@ -208,12 +227,13 @@ with tabs[0]:
                 st.write(f"**Campaigns Joined**: {st.session_state['profile']['campaigns_joined']}")
                 
                 if st.button("Restart Game"):
+                    # Reset session state
                     st.session_state["current_index"] = 0
                     st.session_state["skip_turn"] = False
                     st.session_state["total_nm_traveled"] = 0.0
                     st.session_state["scoreboard"] = []
-                    st.session_state["already_offered_campaign"] = False
-                    st.session_state["active_campaign"] = None
+                    st.session_state["already_offered"] = False
+                    st.session_state["active_sponsor"] = None
                     st.session_state["profile"] = {
                         "role": "Passenger",
                         "ad_score": 0,
@@ -223,10 +243,9 @@ with tabs[0]:
                         "impressions": 0
                     }
                     st.success("Game Restarted!")
-    
-    # ---- Scoreboard Display ----
+
     st.markdown("## Scoreboard")
-    if len(st.session_state["scoreboard"]) > 0:
-        st.dataframe(st.session_state["scoreboard"])
+    if len(st.session_state["scoreboard"]) == 0:
+        st.write("No moves recorded.")
     else:
-        st.write("No actions recorded yet.")
+        st.dataframe(st.session_state["scoreboard"])
