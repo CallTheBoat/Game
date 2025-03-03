@@ -16,7 +16,7 @@ def distance_nm(lat1, lon1, lat2, lon2):
     dist_km = 6371.0 * c
     return dist_km * 0.539957
 
-# ---------- Session State Initialization ----------
+# ---------- Session State ----------
 if "profile" not in st.session_state:
     st.session_state["profile"] = {
         "name": "",
@@ -26,14 +26,48 @@ if "profile" not in st.session_state:
         "instagram_followers": 0,
         "adonboard_friends": 0,
         "photo": None,
-        "friend_count": 0  # πόσους φίλους έχει κάνει στην AddOnBoard
+        "friend_count": 0
     }
 
-if "addonboard_feed" not in st.session_state:
-    st.session_state["addonboard_feed"] = [
-        {"post_id": 1, "text": "Hello from AddOnBoard!", "adds": 0, "shares": 0, "friend_requests": 0},
-        {"post_id": 2, "text": "Another day at sea!",    "adds": 0, "shares": 0, "friend_requests": 0},
-        {"post_id": 3, "text": "Looking for sponsors!",  "adds": 0, "shares": 0, "friend_requests": 0}
+# Feed με "εταιρικά posts" - companies προσεγγίζουν users
+if "corporate_feed" not in st.session_state:
+    st.session_state["corporate_feed"] = [
+        {
+            "post_id": 101,
+            "company": "Vodafone",
+            "logo": "https://via.placeholder.com/50x50.png?text=Voda",
+            "text": "Special 5G plans for travelers!",
+            "adds": 0,
+            "shares": 0,
+            "follows": 0
+        },
+        {
+            "post_id": 102,
+            "company": "Nike",
+            "logo": "https://via.placeholder.com/50x50.png?text=Nike",
+            "text": "New maritime running shoes - for deck jogging!",
+            "adds": 0,
+            "shares": 0,
+            "follows": 0
+        },
+        {
+            "post_id": 103,
+            "company": "Coca-Cola",
+            "logo": "https://via.placeholder.com/50x50.png?text=Coke",
+            "text": "Stay refreshed at sea with a Coke!",
+            "adds": 0,
+            "shares": 0,
+            "follows": 0
+        },
+        {
+            "post_id": 104,
+            "company": "Adidas",
+            "logo": "https://via.placeholder.com/50x50.png?text=Adid",
+            "text": "Marine-friendly sportswear, sponsor deals!",
+            "adds": 0,
+            "shares": 0,
+            "follows": 0
+        }
     ]
 
 if "active_sponsor" not in st.session_state:
@@ -54,77 +88,71 @@ if "sponsor_decision" not in st.session_state:
 if "final_campaign_decision" not in st.session_state:
     st.session_state["final_campaign_decision"] = None
 
-# Για το "κόκκινο λαμπάκι" ειδοποίησης
+# "show_red_light" => εμφανίζει κόκκινη ειδοποίηση στο Board Game
 if "show_red_light" not in st.session_state:
     st.session_state["show_red_light"] = False
 
 # ---------- SIDEBAR: Progress & Stats ----------
 st.sidebar.title("AddOnBoard Platform Stats")
-
-# Ενεργοί χρήστες (dummy)
 st.sidebar.info("Active users: 35,000")
 
-# Υποθέτουμε πως ο μέγιστος αριθμός “AddOnBoard Friends” που μπορεί να κάνει κάποιος είναι 100
 MAX_FRIENDS = 100
 current_friends = st.session_state["profile"]["friend_count"]
-progress_ratio = min(current_friends / MAX_FRIENDS, 1.0)  # να μην ξεπεράσει το 1
+progress_ratio = min(current_friends / MAX_FRIENDS, 1.0)
 
 st.sidebar.progress(progress_ratio)
-st.sidebar.write(f"You have {current_friends} / {MAX_FRIENDS} potential AddOnBoard friends.")
-
-st.sidebar.write("Increase your friend_count by 'Add Friend' in the feed to get closer to 100% and attract more sponsors!")
+st.sidebar.write(f"You have {current_friends} / {MAX_FRIENDS} possible AddOnBoard friends.")
+st.sidebar.write("Interact with corporate posts or 'Add Friend' to grow your network & attract sponsors!")
 
 # ---------- Create 4 Tabs ----------
 tabs = st.tabs([
-    "1. Profile Setup & AddOnBoard Feed",
+    "1. Profile Setup & Corporate Feed",
     "2. Board Game",
     "3. Sponsor Requirements",
     "4. Sponsor Admin"
 ])
 
-# ========== TAB 1: Profile Setup & AddOnBoard Feed ==========
+# ========== TAB 1: Profile Setup & Corporate Feed ==========
 with tabs[0]:
-    st.title("Profile Setup & AddOnBoard Feed")
-    st.info("Fill in your profile, then see the feed below. 'Add' is the new 'like' here, and you can 'Add Friend'.")
+    st.title("Profile Setup & Corporate Feed (Companies Approaching Users!)")
 
+    st.markdown("#### Passenger Profile Form")
     with st.form("profile_form"):
         st.session_state["profile"]["name"] = st.text_input("Name", value=st.session_state["profile"]["name"])
         st.session_state["profile"]["surname"] = st.text_input("Surname", value=st.session_state["profile"]["surname"])
         st.session_state["profile"]["age"] = st.number_input("Age", min_value=0, value=st.session_state["profile"]["age"])
         
-        st.session_state["profile"]["facebook_friends"] = st.number_input(
-            "Facebook Friends", min_value=0,
-            value=st.session_state["profile"]["facebook_friends"]
-        )
-        st.session_state["profile"]["instagram_followers"] = st.number_input(
-            "Instagram Followers", min_value=0,
-            value=st.session_state["profile"]["instagram_followers"]
-        )
-        st.session_state["profile"]["adonboard_friends"] = st.number_input(
-            "AdOnBoard Friends", min_value=0,
-            value=st.session_state["profile"]["adonboard_friends"]
-        )
+        st.session_state["profile"]["facebook_friends"] = st.number_input("Facebook Friends", min_value=0, value=st.session_state["profile"]["facebook_friends"])
+        st.session_state["profile"]["instagram_followers"] = st.number_input("Instagram Followers", min_value=0, value=st.session_state["profile"]["instagram_followers"])
+        st.session_state["profile"]["adonboard_friends"] = st.number_input("AdOnBoard Friends", min_value=0, value=st.session_state["profile"]["adonboard_friends"])
 
         photo_file = st.file_uploader("Upload a Profile Photo", type=["jpg","jpeg","png"])
-        submitted = st.form_submit_button("Save Profile")
-        if submitted:
+        save_btn = st.form_submit_button("Save Profile")
+        if save_btn:
             if photo_file is not None:
                 st.session_state["profile"]["photo"] = photo_file.read()
                 st.success("Profile photo uploaded!")
             else:
                 st.session_state["profile"]["photo"] = None
-            st.success("Profile data saved! Scroll down to see feed below.")
+            st.success("Profile data saved! Scroll to corporate feed below.")
 
-    # Show photo if any
+    # Show profile photo if any
     if st.session_state["profile"]["photo"]:
-        st.image(st.session_state["profile"]["photo"], caption="Your Profile Photo")
+        st.image(st.session_state["profile"]["photo"], caption="Your Profile Photo", width=150)
 
-    # Demo feed with "Add", "Share", "Add Friend"
-    st.markdown("### AddOnBoard Feed")
-    for post in st.session_state["addonboard_feed"]:
-        st.markdown(f"**Post {post['post_id']}**: {post['text']}")
-        st.write(f"Adds: {post['adds']}, Shares: {post['shares']}, FriendRequests: {post['friend_requests']}")
-        
+    st.markdown("### Corporate Feed")
+    st.write("**Here, companies post content to attract YOU, the passenger.**")
+
+    for post in st.session_state["corporate_feed"]:
+        # Logo + Company Name side by side
+        colA, colB = st.columns([0.2, 0.8])
+        with colA:
+            # Display company's logo if any
+            st.image(post["logo"], width=50)
+        with colB:
+            st.write(f"**{post['company']}**: {post['text']}")
+            st.write(f"Adds: {post['adds']} | Shares: {post['shares']} | Follows: {post['follows']}")
+
         col1, col2, col3 = st.columns(3)
         if col1.button(f"Add (Post {post['post_id']})"):
             post["adds"] += 1
@@ -132,12 +160,10 @@ with tabs[0]:
         if col2.button(f"Share (Post {post['post_id']})"):
             post["shares"] += 1
             st.experimental_rerun()
-        if col3.button(f"Add Friend (Post {post['post_id']})"):
-            post["friend_requests"] += 1
-            st.session_state["profile"]["friend_count"] += 1
+        if col3.button(f"Follow {post['company']} (Post {post['post_id']})"):
+            post["follows"] += 1
+            # Maybe also increment friend_count or impressions
             st.experimental_rerun()
-    
-    st.markdown(f"**Total AddOnBoard Friends**: {st.session_state['profile']['friend_count']}")
 
 # ========== TAB 2: Board Game ==========
 with tabs[1]:
@@ -150,7 +176,6 @@ with tabs[1]:
     st.write(f"**Current Square**: {squares[st.session_state['current_square']]['name']}")
     st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
 
-    # Map
     m = folium.Map(location=squares[0]["coords"], zoom_start=7)
     for sq in squares:
         folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
@@ -161,7 +186,7 @@ with tabs[1]:
     ).add_to(m)
     st_folium(m, width=700, height=450)
 
-    # Εμφάνιση κόκκινης ειδοποίησης αν sponsor_decision == "Approved"
+    # Red Light Notification if sponsor_decision == "Approved"
     if st.session_state["sponsor_decision"] == "Approved":
         st.markdown("### 🚨 **New Sponsor Notification** 🚨")
         st.info("Your sponsor has APPROVED your profile! Click below to open.")
@@ -200,14 +225,14 @@ with tabs[1]:
             "hours_near_beach": 4,
             "tshirts": "Vodafone T-shirts & Banners"
         }
-        st.session_state["profile_sent"]   = False
+        st.session_state["profile_sent"] = False
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
         st.success("Sponsor accepted. See details below or tab 3.")
     elif decline_btn:
         st.warning("Declined sponsor.")
         st.session_state["active_sponsor"] = None
-        st.session_state["profile_sent"]   = False
+        st.session_state["profile_sent"] = False
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
 
@@ -222,7 +247,7 @@ with tabs[1]:
         st.write(f"- Materials: {sp['tshirts']}")
 
         if st.session_state["profile_sent"]:
-            st.warning("Profile already sent. Wait for sponsor decision (see Tab 3).")
+            st.warning("Profile already sent. Wait for sponsor's decision (Tab 3).")
         else:
             if st.button("Send My Profile to Sponsor"):
                 st.session_state["profile_sent"] = True
@@ -230,6 +255,7 @@ with tabs[1]:
                 st.session_state["final_campaign_decision"] = None
                 st.success("Profile sent! Sponsor sees it in 'Sponsor Admin' tab.")
 
+    # If at finish
     if st.session_state["current_square"] == 1:
         st.subheader("Journey Completed!")
         if st.button("Restart Game"):
@@ -258,13 +284,13 @@ with tabs[2]:
         st.write(f"- Materials: {sp['tshirts']}")
 
         if not st.session_state["profile_sent"]:
-            st.warning("You haven't sent your profile to sponsor. See Board Game tab.")
+            st.warning("You haven't sent your profile to sponsor. Go to Board Game tab.")
         else:
             dec = st.session_state["sponsor_decision"]
             if dec is None:
-                st.info("Waiting for sponsor's decision (Tab 4).")
+                st.info("Waiting for sponsor decision (Tab 4).")
             elif dec == "Rejected":
-                st.error("Sponsor REJECTED your profile. Sorry!")
+                st.error("Sponsor REJECTED your profile!")
             elif dec == "Approved":
                 st.success("Sponsor APPROVED your profile!")
                 st.markdown("#### Final Acceptance of the campaign?")
@@ -294,11 +320,11 @@ with tabs[2]:
 with tabs[3]:
     st.title("Sponsor Admin Page")
 
-    sponsor = st.session_state["active_sponsor"]
-    if sponsor is None:
+    sp = st.session_state["active_sponsor"]
+    if sp is None:
         st.warning("No sponsor campaign accepted by passenger yet.")
     else:
-        st.success(f"Sponsor: {sponsor['sponsor_name']} is active.")
+        st.success(f"Sponsor: {sp['sponsor_name']} is active.")
         
         if not st.session_state["profile_sent"]:
             st.info("Passenger has NOT sent their profile yet.")
@@ -314,9 +340,9 @@ with tabs[3]:
             st.write(f"- 'AddOnBoard' friend_count: {prof.get('friend_count',0)}")
 
             if prof["photo"]:
-                st.image(prof["photo"], caption="Passenger's Profile Photo")
+                st.image(prof["photo"], caption="Passenger's Profile Photo", width=150)
 
-            st.markdown("#### Approve or Reject this passenger's profile?")
+            st.markdown("#### Approve or Reject passenger's profile?")
             dec = st.session_state["sponsor_decision"]
             if dec == "Approved":
                 st.success("You have ALREADY Approved this passenger.")
@@ -327,7 +353,7 @@ with tabs[3]:
                 reject_btn  = st.button("Reject Passenger")
                 if approve_btn:
                     st.session_state["sponsor_decision"] = "Approved"
-                    st.success("Passenger Approved!")
+                    st.success("Passenger Approved! A red light notification will appear in Board Game tab.")
                 elif reject_btn:
                     st.session_state["sponsor_decision"] = "Rejected"
                     st.error("Passenger Rejected!")
