@@ -8,11 +8,11 @@ from datetime import date, timedelta
 def distance_nm(lat1, lon1, lat2, lon2):
     d_lat = math.radians(lat2 - lat1)
     d_lon = math.radians(lat2 - lon1)
-    a = (math.sin(d_lat / 2)**2 +
+    a = (math.sin(d_lat/2)**2 +
          math.cos(math.radians(lat1)) *
          math.cos(math.radians(lat2)) *
          math.sin(d_lon/2)**2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     dist_km = 6371.0 * c
     return dist_km * 0.539957
 
@@ -29,10 +29,8 @@ if "profile" not in st.session_state:
         "friend_count": 0
     }
 
-# Λίστα νησιών - squares στο board game
-# Τώρα προσθέτουμε επιπλέον παραλίες (ονομαστικά) + sponsor_logo
+# Λίστα νησιών/παραλιών - στάσεων (διακεκομμένη γραμμή)
 if "island_squares" not in st.session_state:
-    # Παράδειγμα: έχουμε 5 στάσεις (2 νησιά κι 3 παραλίες)
     st.session_state["island_squares"] = [
         {
             "name": "Rhodes - Main Port",
@@ -76,7 +74,7 @@ if "sponsor_decision" not in st.session_state:
 if "final_campaign_decision" not in st.session_state:
     st.session_state["final_campaign_decision"] = None
 
-# Για την “κόκκινη ειδοποίηση”
+# Για κόκκινη ειδοποίηση
 if "show_red_light" not in st.session_state:
     st.session_state["show_red_light"] = False
 
@@ -119,7 +117,7 @@ with tabs[0]:
                 st.success("Profile photo uploaded!")
             else:
                 st.session_state["profile"]["photo"] = None
-            st.success("Profile data saved. Next, go to 'Board Game' tab or proceed below to see sponsor logic.")
+            st.success("Profile data saved! Now you can proceed to 'Board Game' tab.")
 
     # Show photo
     if st.session_state["profile"]["photo"]:
@@ -133,12 +131,12 @@ with tabs[1]:
     st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
 
     # Φτιάχνουμε χάρτη
-    island_squares = st.session_state["island_squares"]
-    center_coords = island_squares[0]["coords"]
+    squares = st.session_state["island_squares"]
+    center_coords = squares[0]["coords"]
     m = folium.Map(location=center_coords, zoom_start=6)
 
     coords_list = []
-    for sq in island_squares:
+    for sq in squares:
         coords_list.append(sq["coords"])
         # βασικός marker
         folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
@@ -151,8 +149,7 @@ with tabs[1]:
                 tooltip=f"Sponsor at {sq['name']}"
             ).add_to(m)
 
-    # Προσθήκη διακεκομμένης γραμμής (dashed/dotted) ανάμεσα στα σημεία
-    # Με χρήση dash_array="5,5" 
+    # Προσθήκη διακεκομμένης γραμμής (dash_array="5,5") μεταξύ των παραλιών
     folium.PolyLine(
         coords_list,
         color="blue",
@@ -162,7 +159,7 @@ with tabs[1]:
 
     st_folium(m, width=700, height=450)
 
-    # Κόκκινη ειδοποίηση
+    # Κόκκινη ειδοποίηση αν sponsor_decision == "Approved"
     if st.session_state["sponsor_decision"] == "Approved":
         st.markdown("### 🚨 **New Sponsor Notification** 🚨")
         st.info("Your sponsor has APPROVED your profile! Click below to open.")
@@ -171,8 +168,13 @@ with tabs[1]:
                      caption="Καλώς ήρθες στο ταξίδι! (Sponsored).")
             st.success("Enjoy your sponsored journey with custom logos & t-shirts!")
 
+    # Εμφανίζουμε Sponsor Offer + Διαδρομή
     st.markdown("### Sponsor Offer")
-    st.info("Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. Accept or Decline?")
+    st.info("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. 
+**Proposed Route**: Rhodes - Main Port → Kallithea Beach → Lindos Beach → Prasonisi Beach → Finish Spot
+\n(Shown as dotted line on the map above).  
+Will you accept or decline?""")
+
     accept_btn = st.button("Yes, Accept Sponsor")
     decline_btn = st.button("No, Decline Sponsor")
 
@@ -194,7 +196,7 @@ with tabs[1]:
         st.session_state["profile_sent"] = False
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
-        st.success("Sponsor accepted. You may send your profile below or check Tab 3.")
+        st.success("Sponsor accepted. You can 'Send My Profile to Sponsor' or check Tab 3.")
     elif decline_btn:
         st.warning("Declined sponsor.")
         st.session_state["active_sponsor"] = None
