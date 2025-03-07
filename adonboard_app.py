@@ -29,7 +29,9 @@ if "profile" not in st.session_state:
         "friend_count": 0
     }
 
-# Λίστα νησιών/παραλιών - στάσεων (διακεκομμένη γραμμή)
+# Λίστα στάσεων στο Board Game:
+# Χρησιμοποιούμε 5 “squares” (νησιά, παραλίες) με διακεκομμένη γραμμή
+# Παρατηρήστε ότι όσες στάσεις περιέχουν "Beach" θα τονιστούν με CircleMarker
 if "island_squares" not in st.session_state:
     st.session_state["island_squares"] = [
         {
@@ -74,19 +76,21 @@ if "sponsor_decision" not in st.session_state:
 if "final_campaign_decision" not in st.session_state:
     st.session_state["final_campaign_decision"] = None
 
-# Για κόκκινη ειδοποίηση
+# Για την “κόκκινη ειδοποίηση”
 if "show_red_light" not in st.session_state:
     st.session_state["show_red_light"] = False
 
 # ---------- Sidebar με progress bar ----------
 st.sidebar.title("AddOnBoard Platform Stats")
 st.sidebar.info("Active users: 35,000")
+
 MAX_FRIENDS = 100
 current_friends = st.session_state["profile"]["friend_count"]
 progress_ratio = min(current_friends / MAX_FRIENDS, 1.0)
 st.sidebar.progress(progress_ratio)
+
 st.sidebar.write(f"You have {current_friends} / {MAX_FRIENDS} possible AddOnBoard friends.")
-st.sidebar.write("Interact with companies or 'Add Friend' to grow your network & attract sponsors!")
+st.sidebar.write("Interact with sponsors or 'Add Friend' to grow your network & attract sponsors!")
 
 # ---------- Tabs (4) ----------
 tabs = st.tabs([
@@ -117,7 +121,7 @@ with tabs[0]:
                 st.success("Profile photo uploaded!")
             else:
                 st.session_state["profile"]["photo"] = None
-            st.success("Profile data saved! Now you can proceed to 'Board Game' tab.")
+            st.success("Profile data saved! Head to 'Board Game' tab.")
 
     # Show photo
     if st.session_state["profile"]["photo"]:
@@ -127,10 +131,9 @@ with tabs[0]:
 with tabs[1]:
     st.title("Board Game: Islands & Beaches with Dotted Routes")
 
-    st.write("We have multiple beach stops. Some squares may have sponsor logos pinned on them.")
+    st.write("Below is a dotted route across multiple beaches. Some squares have sponsor logos pinned.")
     st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
 
-    # Φτιάχνουμε χάρτη
     squares = st.session_state["island_squares"]
     center_coords = squares[0]["coords"]
     m = folium.Map(location=center_coords, zoom_start=6)
@@ -138,10 +141,24 @@ with tabs[1]:
     coords_list = []
     for sq in squares:
         coords_list.append(sq["coords"])
-        # βασικός marker
-        folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
-        # αν υπάρχει sponsor_logo
-        if sq["sponsor_logo"] is not None:
+
+        # Αν η στάση περιέχει τη λέξη 'Beach', βάζουμε ένα τονισμένο Marker (CircleMarker)
+        if "Beach" in sq["name"]:
+            folium.CircleMarker(
+                sq["coords"],
+                radius=8,
+                color="purple",
+                fill=True,
+                fill_color="pink",
+                fill_opacity=0.6,
+                tooltip=sq["name"]
+            ).add_to(m)
+        else:
+            # βασικός marker (νησί ή finish spot)
+            folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
+
+        # Αν υπάρχει sponsor_logo
+        if sq["sponsor_logo"]:
             icon_html = folium.CustomIcon(sq["sponsor_logo"], icon_size=(50,50))
             folium.Marker(
                 sq["coords"],
@@ -149,17 +166,17 @@ with tabs[1]:
                 tooltip=f"Sponsor at {sq['name']}"
             ).add_to(m)
 
-    # Προσθήκη διακεκομμένης γραμμής (dash_array="5,5") μεταξύ των παραλιών
+    # Δημιουργούμε μια διακεκομμένη (dotted) PolyLine 
     folium.PolyLine(
         coords_list,
         color="blue",
         weight=3,
-        dash_array="5,5"
+        dash_array="8,5"  # πιο εμφανή διακεκομμένη (8px γραμμή, 5px κενό)
     ).add_to(m)
 
     st_folium(m, width=700, height=450)
 
-    # Κόκκινη ειδοποίηση αν sponsor_decision == "Approved"
+    # Εμφανίζουμε ειδοποίηση αν sponsor_decision == Approved
     if st.session_state["sponsor_decision"] == "Approved":
         st.markdown("### 🚨 **New Sponsor Notification** 🚨")
         st.info("Your sponsor has APPROVED your profile! Click below to open.")
@@ -168,12 +185,19 @@ with tabs[1]:
                      caption="Καλώς ήρθες στο ταξίδι! (Sponsored).")
             st.success("Enjoy your sponsored journey with custom logos & t-shirts!")
 
-    # Εμφανίζουμε Sponsor Offer + Διαδρομή
+    # Στο Offer προσθέτουμε την περιγραφή της διαδρομής (beaches)
     st.markdown("### Sponsor Offer")
     st.info("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. 
-**Proposed Route**: Rhodes - Main Port → Kallithea Beach → Lindos Beach → Prasonisi Beach → Finish Spot
-\n(Shown as dotted line on the map above).  
-Will you accept or decline?""")
+**Proposed Route**:  
+- Rhodes - Main Port  
+- Kallithea Beach  
+- Lindos Beach  
+- Prasonisi Beach  
+- Finish Spot  
+
+(Shown as a dotted route on the map above).  
+Will you accept or decline?
+""")
 
     accept_btn = st.button("Yes, Accept Sponsor")
     decline_btn = st.button("No, Decline Sponsor")
@@ -196,7 +220,7 @@ Will you accept or decline?""")
         st.session_state["profile_sent"] = False
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
-        st.success("Sponsor accepted. You can 'Send My Profile to Sponsor' or check Tab 3.")
+        st.success("Sponsor accepted. You can 'Send My Profile' or check Tab 3.")
     elif decline_btn:
         st.warning("Declined sponsor.")
         st.session_state["active_sponsor"] = None
@@ -204,19 +228,18 @@ Will you accept or decline?""")
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
 
-    # If there's an active sponsor
+    # Αν υπάρχει ένας active_sponsor
     sp = st.session_state["active_sponsor"]
     if sp is not None:
         st.markdown("### Sponsor Requirements (quick view)")
         st.write(f"- Required Impressions: {sp['required_impressions']}")
         st.write(f"- Discount: {sp['discount_percent']}%")
         st.write(f"- Duration: {sp['duration_days']} days ({sp['start_date']}→{sp['end_date']})")
-        st.write(f"- {sp['daily_posts']} posts/day")
-        st.write(f"- {sp['hours_near_beach']} hours near beaches/day")
+        st.write(f"- {sp['daily_posts']} posts/day, {sp['hours_near_beach']} hrs near beaches/day")
         st.write(f"- Materials: {sp['tshirts']}")
 
         if st.session_state["profile_sent"]:
-            st.warning("Profile already sent. Wait for sponsor's decision in Tab 3 or Tab 4.")
+            st.warning("Profile already sent. Wait for sponsor's decision (Tab 3 or Tab 4).")
         else:
             if st.button("Send My Profile to Sponsor"):
                 st.session_state["profile_sent"] = True
