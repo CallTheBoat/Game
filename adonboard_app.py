@@ -1,108 +1,89 @@
 import streamlit as st
+import folium
+from streamlit_folium import folium_static
 import random
 import time
-import folium
-from streamlit_folium import st_folium
 
-# Φόρτωση CSS
-def load_css():
-    with open("styles.css") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+# ------------------------------ #
+#       ΑΡΧΙΚΕΣ ΡΥΘΜΙΣΕΙΣ
+# ------------------------------ #
+st.set_page_config(page_title="AdOnBoard - Επιτραπέζιο Ναυτιλίας", layout="wide")
 
-# Αρχικοποίηση σελίδας
-st.set_page_config(page_title="AdOnBoard - Maritime Monopoly", layout="wide")
+st.title("🚢 AdOnBoard - Επιτραπέζιο Ναυτιλίας")
 
-# Φόρτωση CSS
-load_css()
+# ------------------------------ #
+#       ΕΠΙΛΟΓΗ ΡΟΛΟΥ ΠΑΙΚΤΗ
+# ------------------------------ #
+st.sidebar.header("🛠 Επιλέξτε Ρόλο")
 
-# Διάταξη σελίδας (Αριστερά: Διαφήμιση - Δεξιά: Παιχνίδι)
-col1, col2 = st.columns([1, 3])
+role = st.sidebar.radio("Διάλεξε τον ρόλο σου:", ["🛳️ Πλοιοκτήτης", "🧑‍✈️ Επιβάτης", "💰 Χορηγός"])
 
-# 🎥 **Αριστερή Στήλη: NEXT Campaign Video**
-with col1:
-    st.markdown("### 📢 NEXT Advertising Campaign")
-    st.video("https://www.youtube.com/watch?v=Fvn51iy9dy8")
-    st.markdown("**Join the future of maritime advertising with NEXT!**")
+if role == "🛳️ Πλοιοκτήτης":
+    st.sidebar.subheader("⚓ Πλοιοκτήτης")
+    st.sidebar.write("Διαχειρίζεσαι σκάφη και επιλέγεις διαδρομές.")
+    ship_type = st.sidebar.selectbox("Επέλεξε τύπο σκάφους:", ["Luxury Yacht (10 άτομα)", "Catamaran (8 άτομα)", "Speedboat (5 άτομα)"])
+    st.sidebar.write(f"🚤 Έχεις επιλέξει: {ship_type}")
 
-# 🎲 **Δεξιά Στήλη: Παιχνίδι & Δρομολόγια**
-with col2:
-    st.markdown("<h1 style='text-align: center;'>🚢 AdOnBoard - The Maritime Monopoly Experience</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Choose your role and start your maritime journey!</p>", unsafe_allow_html=True)
+elif role == "🧑‍✈️ Επιβάτης":
+    st.sidebar.subheader("👥 Επιβάτης")
+    st.sidebar.write("Διαλέγεις διαδρομές και συμμετέχεις στις εμπειρίες!")
+    st.sidebar.write("Κέρδισε likes και χορηγίες μέσω των social media!")
 
-    # 🔹 **Επιλογή Ρόλου**
-    role = st.selectbox("Select Your Role:", ["Passenger", "Ship Owner", "Sponsor"])
+elif role == "💰 Χορηγός":
+    st.sidebar.subheader("💼 Χορηγός")
+    st.sidebar.write("Επιλέγεις διαδρομές και προσφέρεις χορηγία σε επιβάτες και πλοιοκτήτες.")
+    sponsor_name = st.sidebar.text_input("Όνομα χορηγού:")
+    ad_budget = st.sidebar.slider("Προϋπολογισμός Χορηγίας (€)", 500, 50000, step=500)
+    st.sidebar.write(f"🤑 Προσφέρεις χορηγία αξίας {ad_budget}€!")
 
-    if role == "Passenger":
-        st.write("🌊 Travel between islands, share experiences, and gain sponsorships!")
+# ------------------------------ #
+#       ΕΠΙΛΟΓΗ ΔΙΑΔΡΟΜΗΣ
+# ------------------------------ #
+routes = {
+    "Σαντορίνη - Μύκονος": [[36.3932, 25.4615], [37.4467, 25.3289]],
+    "Ρόδος - Αθήνα": [[36.4349, 28.2176], [37.9838, 23.7275]],
+    "Κέρκυρα - Πάτρα": [[39.6243, 19.9217], [38.2466, 21.7346]]
+}
 
-    elif role == "Ship Owner":
-        st.write("⚓ List your ships, choose profitable routes, and attract sponsors.")
+st.sidebar.header("🌍 Επιλογή Διαδρομής")
+selected_route = st.sidebar.selectbox("Διάλεξε διαδρομή:", list(routes.keys()))
+route_coordinates = routes[selected_route]
 
-    elif role == "Sponsor":
-        st.write("📢 Advertise on popular sea routes and track engagement statistics.")
+# ------------------------------ #
+#       ΧΑΡΤΗΣ ΜΕ ΣΚΑΦΗ
+# ------------------------------ #
+st.header(f"🌊 Χάρτης Διαδρομής: {selected_route}")
 
-    # 🗺️ **Διαδρομές Πλοίων με Χορηγούς**
-    routes = {
-        "Santorini - Mykonos": {"coords": [(36.3932, 25.4615), (37.4467, 25.3289)], "sponsor": "Vodafone"},
-        "Rhodes - Athens": {"coords": [(36.4349, 28.2176), (37.9838, 23.7275)], "sponsor": "Nike"},
-        "Crete - Mykonos": {"coords": [(35.341, 25.133), (37.4467, 25.3289)], "sponsor": "Coca-Cola"},
-        "Athens - Santorini": {"coords": [(37.9838, 23.7275), (36.3932, 25.4615)], "sponsor": "Adidas"}
-    }
+map_center = route_coordinates[0]
+m = folium.Map(location=map_center, zoom_start=6, tiles="CartoDB Positron")
 
-    selected_route = st.selectbox("Choose a Route:", list(routes.keys()))
+for coord in route_coordinates:
+    folium.Marker(location=coord, icon=folium.Icon(color="blue", icon="ship", prefix="fa")).add_to(m)
 
-    # 🗺️ **Δημιουργία Monopoly-style Χάρτη**
-    m = folium.Map(location=routes[selected_route]["coords"][0], zoom_start=6)
+folium_static(m)
 
-    # Σημάδια εκκίνησης και προορισμού
-    folium.Marker(routes[selected_route]["coords"][0], tooltip="Start", icon=folium.Icon(color="green")).add_to(m)
-    folium.Marker(routes[selected_route]["coords"][1], tooltip="Destination", icon=folium.Icon(color="red")).add_to(m)
+# ------------------------------ #
+#       ΜΗΧΑΝΙΣΜΟΣ ΖΑΡΙΟΥ
+# ------------------------------ #
+st.sidebar.header("🎲 Ρίξε το ζάρι!")
+if st.sidebar.button("Ρίξε το ζάρι!"):
+    dice_roll = random.randint(1, 6)
+    st.sidebar.write(f"🎲 Έφερες {dice_roll}!")
 
-    # **Σήμανση του χορηγού**
-    sponsor = routes[selected_route]["sponsor"]
-    st.markdown(f"🏷 **Sponsor:** {sponsor}")
+    # Προσομοίωση κίνησης του σκάφους
+    progress_bar = st.progress(0)
+    for i in range(dice_roll):
+        time.sleep(0.5)
+        progress_bar.progress((i + 1) / dice_roll)
 
-    # **Διαδρομή στο χάρτη**
-    folium.PolyLine(routes[selected_route]["coords"], color="blue", weight=5, tooltip="Route").add_to(m)
+    st.sidebar.success("🚀 Το σκάφος προχώρησε στη διαδρομή!")
 
-    # 🎲 **Ρίψη Ζαριού και Προώθηση Πλοίου**
-    if st.button("Roll the Dice 🎲"):
-        dice_value = random.randint(1, 6)
-        st.success(f"You rolled: {dice_value}")
+# ------------------------------ #
+#       ΣΤΑΤΙΣΤΙΚΑ ΠΑΙΚΤΗ
+# ------------------------------ #
+st.sidebar.subheader("📊 Στατιστικά Παίκτη")
+st.sidebar.write(f"👍 Likes: {random.randint(50, 500)}")
+st.sidebar.write(f"💰 Χορηγικά Έσοδα: {random.randint(1000, 10000)}€")
+st.sidebar.write(f"🏆 Εμπειρία: {random.randint(1, 10)} επίπεδο")
 
-        # Προσομοίωση κίνησης πλοίου
-        for step in range(dice_value):
-            lat_step = routes[selected_route]["coords"][0][0] + (step * 0.1)
-            lon_step = routes[selected_route]["coords"][0][1] + (step * 0.1)
-            folium.Marker([lat_step, lon_step], icon=folium.Icon(color="blue")).add_to(m)
-            time.sleep(0.5)
-
-    # 🗺️ **Προβολή Monopoly-style Χάρτη**
-    st_folium(m, width=800, height=500)
-
-    # 📢 **Χορηγίες & Διαφημίσεις**
-    if role == "Sponsor":
-        st.markdown("## 📢 Advertising Dashboard")
-        st.write("View potential reach based on your chosen route.")
-        
-        reach = random.randint(5000, 50000)
-        st.metric("Potential Engagement", f"{reach} impressions")
-
-        if st.button("Start Campaign 🚀"):
-            st.success("Campaign Launched Successfully!")
-
-    # 🎭 **Επιλογή Επιβατών για Χορηγίες**
-    if role == "Sponsor":
-        st.markdown("## 🎭 Choose Passengers for Sponsored Content")
-        passengers = ["Dimitris Chatzi", "Maria Kosta", "Alex Papadopoulos"]
-        selected_passenger = st.selectbox("Select a Passenger:", passengers)
-
-        engagement = random.randint(1000, 10000)
-        st.metric(f"Estimated Engagement for {selected_passenger}", f"{engagement} views")
-
-st.markdown("---")
-
-# 🚢 **Animation με Lottie**
-st.markdown("""
-<iframe src="https://lottiefiles.com/animations/boat-sailing" width="100%" height="400" frameborder="0" allowfullscreen></iframe>
-""", unsafe_allow_html=True)
+st.success("🎮 Είσαι έτοιμος να παίξεις! Επιλογή διαδρομής, ρίξε το ζάρι και κέρδισε χορηγούς!")
