@@ -8,7 +8,7 @@ from datetime import date, timedelta
 def distance_nm(lat1, lon1, lat2, lon2):
     d_lat = math.radians(lat2 - lat1)
     d_lon = math.radians(lat2 - lon1)
-    a = (math.sin(d_lat/2)**2 +
+    a = (math.sin(d_lat / 2)**2 +
          math.cos(math.radians(lat1)) *
          math.cos(math.radians(lat2)) *
          math.sin(d_lon/2)**2)
@@ -30,23 +30,33 @@ if "profile" not in st.session_state:
     }
 
 # Λίστα νησιών - squares στο board game
-# Προσθέτουμε "sponsor_logo" εάν θέλουμε να δείξουμε τον χορηγό
-# Παραδείγματος χάριν, ένα-δύο νησιά έχουν ήδη έναν χορηγό
+# Τώρα προσθέτουμε επιπλέον παραλίες (ονομαστικά) + sponsor_logo
 if "island_squares" not in st.session_state:
+    # Παράδειγμα: έχουμε 5 στάσεις (2 νησιά κι 3 παραλίες)
     st.session_state["island_squares"] = [
         {
-            "name": "Rhodes",
+            "name": "Rhodes - Main Port",
             "coords": (36.4349, 28.2176),
             "sponsor_logo": "https://via.placeholder.com/50.png?text=Vodafone"
         },
         {
-            "name": "Santorini",
-            "coords": (36.3932, 25.4615),
+            "name": "Kallithea Beach",
+            "coords": (36.3825, 28.2472),
+            "sponsor_logo": None
+        },
+        {
+            "name": "Lindos Beach",
+            "coords": (36.0917, 28.0850),
+            "sponsor_logo": None
+        },
+        {
+            "name": "Prasonisi Beach",
+            "coords": (35.8873, 27.7876),
             "sponsor_logo": "https://via.placeholder.com/50.png?text=Nike"
         },
         {
-            "name": "Mykonos",
-            "coords": (37.4467, 25.3289),
+            "name": "Finish Spot",
+            "coords": (35.6000, 27.5000),
             "sponsor_logo": None
         }
     ]
@@ -83,7 +93,7 @@ st.sidebar.write("Interact with companies or 'Add Friend' to grow your network &
 # ---------- Tabs (4) ----------
 tabs = st.tabs([
     "1. Profile Setup",
-    "2. Board Game (Islands & Sponsors)",
+    "2. Board Game (Islands & Beaches)",
     "3. Sponsor Requirements",
     "4. Sponsor Admin"
 ])
@@ -115,34 +125,44 @@ with tabs[0]:
     if st.session_state["profile"]["photo"]:
         st.image(st.session_state["profile"]["photo"], caption="Your Profile Photo", width=150)
 
-# ========== TAB 2: Board Game (Islands & Sponsors) ==========
+# ========== TAB 2: Board Game (Islands & Beaches) ==========
 with tabs[1]:
-    st.title("Board Game (Islands with Sponsor Logos)")
+    st.title("Board Game: Islands & Beaches with Dotted Routes")
 
-    st.write("We have 3 island squares. Some may have sponsor logos pinned on them.")
+    st.write("We have multiple beach stops. Some squares may have sponsor logos pinned on them.")
     st.write(f"**Total NM**: {st.session_state['total_nm']:.2f}")
 
-    # Δημιουργούμε ένα folium map και τοποθετούμε τα νησιά
+    # Φτιάχνουμε χάρτη
     island_squares = st.session_state["island_squares"]
-    center_coords = island_squares[0]["coords"]  # κεντράρουμε στον πρώτο
+    center_coords = island_squares[0]["coords"]
     m = folium.Map(location=center_coords, zoom_start=6)
 
-    for island in island_squares:
-        # Marker for the island
-        folium.Marker(island["coords"], tooltip=island["name"]).add_to(m)
-        # If there's sponsor_logo, προσθέτουμε marker με εικόνα
-        if island["sponsor_logo"] is not None:
-            # Χρησιμοποιούμε CustomIcon για να δείξουμε το λογότυπο
-            icon_html = folium.CustomIcon(island["sponsor_logo"], icon_size=(50,50))
+    coords_list = []
+    for sq in island_squares:
+        coords_list.append(sq["coords"])
+        # βασικός marker
+        folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(m)
+        # αν υπάρχει sponsor_logo
+        if sq["sponsor_logo"] is not None:
+            icon_html = folium.CustomIcon(sq["sponsor_logo"], icon_size=(50,50))
             folium.Marker(
-                location=island["coords"],
+                sq["coords"],
                 icon=icon_html,
-                tooltip=f"Sponsor at {island['name']}"
+                tooltip=f"Sponsor at {sq['name']}"
             ).add_to(m)
+
+    # Προσθήκη διακεκομμένης γραμμής (dashed/dotted) ανάμεσα στα σημεία
+    # Με χρήση dash_array="5,5" 
+    folium.PolyLine(
+        coords_list,
+        color="blue",
+        weight=3,
+        dash_array="5,5"
+    ).add_to(m)
 
     st_folium(m, width=700, height=450)
 
-    # Κόκκινη ειδοποίηση αν sponsor_decision == "Approved"
+    # Κόκκινη ειδοποίηση
     if st.session_state["sponsor_decision"] == "Approved":
         st.markdown("### 🚨 **New Sponsor Notification** 🚨")
         st.info("Your sponsor has APPROVED your profile! Click below to open.")
@@ -182,7 +202,7 @@ with tabs[1]:
         st.session_state["sponsor_decision"] = None
         st.session_state["final_campaign_decision"] = None
 
-    # If there's an active sponsor, show "Send Profile" button
+    # If there's an active sponsor
     sp = st.session_state["active_sponsor"]
     if sp is not None:
         st.markdown("### Sponsor Requirements (quick view)")
