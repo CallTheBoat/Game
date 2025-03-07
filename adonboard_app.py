@@ -1,46 +1,41 @@
 import streamlit as st
+import folium
+from streamlit_folium import folium_static
+import time
 
-# Διαθέσιμοι χορηγοί με εικόνες και περιγραφές
-sponsors = {
-    "🚀 Red Bull Sailing Team": {
-        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/RedBull_Racing_2018.jpg/800px-RedBull_Racing_2018.jpg",
-        "desc": "Ιδανικός για γρήγορα και δυναμικά σκάφη. Δίνει μπόνους στην ταχύτητα.",
-        "bonus": "🚀 +10% Ταχύτητα σε κάθε διαδρομή!"
-    },
-    "🥤 Coca-Cola Beach Club": {
-        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Coca-Cola_logo.svg/800px-Coca-Cola_logo.svg.png",
-        "desc": "Χορηγεί σκάφη που ταξιδεύουν σε δημοφιλείς παραλίες.",
-        "bonus": "💰 +20% Κέρδη όταν περνάς από παραλίες με κόσμο!"
-    },
-    "🏄 Nike Aqua Sports": {
-        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Nike_logo.svg/800px-Nike_logo.svg.png",
-        "desc": "Δίνει μπόνους σε extreme sports events και watersports στάσεις.",
-        "bonus": "🎯 +15% Πόντους όταν σταματάς σε events με extreme sports!"
-    },
-    "💎 Greek Islands Luxury Tours": {
-        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Santorini_Caldera.jpg/800px-Santorini_Caldera.jpg",
-        "desc": "Χορηγεί πολυτελή σκάφη και VIP τουριστικές διαδρομές.",
-        "bonus": "🎩 +25% Μπόνους στα VIP τουριστικά πακέτα!"
-    }
+# Διαθέσιμες διαδρομές
+routes = {
+    "Luxury Tour": {"start": [36.3932, 25.4615], "end": [37.4467, 25.3289], "desc": "VIP τουριστικό ταξίδι"},
+    "Beach Party Route": {"start": [37.0856, 25.1478], "end": [36.7261, 25.2810], "desc": "Beach party και καλοκαίρι"},
+    "Extreme Water Sports": {"start": [36.434, 28.217], "end": [36.892, 27.287], "desc": "Διαδρομή για watersports"},
+    "Speed Challenge": {"start": [37.9838, 23.7275], "end": [37.2634, 23.1592], "desc": "Αγώνας ταχύτητας"}
 }
 
-# Τίτλος
-st.title("🏆 Επιλογή Χορηγού για το Σκάφος")
+# Επιλογή διαδρομής
+st.title("⛵ Επιλογή Διαδρομής")
+selected_route = st.selectbox("Επίλεξε τη διαδρομή σου:", list(routes.keys()))
 
-# Δυναμική παρουσίαση των χορηγών
-selected_sponsor = None
-for name, details in sponsors.items():
-    col1, col2 = st.columns([1, 2])  # Χωρίζουμε τη σελίδα για εικόνα + περιγραφή
-    with col1:
-        st.image(details["img"], width=150)  # Φωτογραφία του χορηγού
-    with col2:
-        st.subheader(name)
-        st.write(details["desc"])
-        st.write(f"🎁 **Μπόνους:** {details['bonus']}")
-        if st.button(f"✅ Επιλογή {name}"):
-            selected_sponsor = name
+# Δημιουργία χάρτη
+map = folium.Map(location=[37.5, 24.5], zoom_start=6)
 
-# Αποθήκευση επιλογής
-if selected_sponsor:
-    st.session_state["sponsor"] = selected_sponsor
-    st.success(f"✅ Έχεις πλέον χορηγό τον {selected_sponsor}! Το ταξίδι σου γίνεται πιο προσοδοφόρο!")
+# Σχεδίαση διαδρομής
+route_data = routes[selected_route]
+folium.Marker(route_data["start"], tooltip="Αφετηρία", icon=folium.Icon(color="green")).add_to(map)
+folium.Marker(route_data["end"], tooltip="Προορισμός", icon=folium.Icon(color="red")).add_to(map)
+folium.PolyLine([route_data["start"], route_data["end"]], color="blue", weight=5).add_to(map)
+
+# Εμφάνιση χάρτη
+folium_static(map)
+
+# Προσομοίωση κίνησης του σκάφους
+if st.button("🚀 Ξεκίνα το ταξίδι"):
+    st.write(f"🏁 Το σκάφος σου ξεκινά το ταξίδι: {selected_route}!")
+
+    # Προσθήκη animation
+    progress_bar = st.progress(0)
+    steps = 10
+    for i in range(steps):
+        progress_bar.progress((i + 1) / steps)
+        time.sleep(0.5)
+
+    st.success(f"🎉 Έφτασες στον προορισμό σου! {route_data['desc']}")
