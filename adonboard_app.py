@@ -2,26 +2,14 @@ import streamlit as st
 import folium
 from streamlit_folium import folium_static
 import time
-import numpy as np
-import pygame
 
-# 🎶 Προσθήκη Background Music
-st.markdown(
-    """
-    <audio autoplay loop>
-        <source src="https://www.fesliyanstudios.com/play-mp3/387" type="audio/mp3">
-    </audio>
-    """,
-    unsafe_allow_html=True
-)
-
-# 💡 Custom Background Image με Sci-Fi Θέμα
+# 💡 Custom Background Image με θαλάσσιο θέμα
 def add_bg_from_url():
     st.markdown(
         f"""
         <style>
         .stApp {{
-            background-image: url("https://images.unsplash.com/photo-1524775095153-6d4c75524d36");
+            background-image: url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e");
             background-size: cover;
         }}
         </style>
@@ -30,7 +18,41 @@ def add_bg_from_url():
     )
 add_bg_from_url()
 
-# 🎲 Επιλογή Διαδρομής με Real-Time Κίνηση
+# 🌊 UI Styling - Modern Transparent Panels
+st.markdown(
+    """
+    <style>
+    .floating-panel {
+        background: rgba(0, 0, 0, 0.7);
+        padding: 20px;
+        border-radius: 15px;
+        color: white;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 320px;
+        box-shadow: 0px 5px 25px rgba(255,255,255,0.2);
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #0077be, #00aaff);
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 10px 20px;
+        border-radius: 12px;
+        border: none;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        transform: scale(1.05);
+        box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.6);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 🎲 Επιλογή Διαδρομής με Ανανεωμένα Εικονίδια
 st.title("🌊 Επιλογή Διαδρομής")
 routes = {
     "Luxury Tour 🌟": {"start": [36.3932, 25.4615], "end": [37.4467, 25.3289], "desc": "VIP τουριστικό ταξίδι"},
@@ -41,52 +63,28 @@ routes = {
 selected_route = st.selectbox("📍 **Επέλεξε διαδρομή:**", list(routes.keys()))
 route_data = routes[selected_route]
 
-# 🌍 Δημιουργία δυναμικού χάρτη με 3D Σκάφος
+# 🌍 Δημιουργία δυναμικού χάρτη με νέα εικονίδια
 map = folium.Map(location=[37.5, 24.5], zoom_start=6, tiles="Stamen Terrain")
 folium.Marker(route_data["start"], tooltip="Αφετηρία", icon=folium.Icon(color="green", icon="cloud")).add_to(map)
 folium.Marker(route_data["end"], tooltip="Προορισμός", icon=folium.Icon(color="red", icon="flag")).add_to(map)
-
-# 🚢 Προσθήκη κινούμενου σκάφους (Real-Time Animation)
-ship_icon = folium.Icon(color="blue", icon="ship")
-ship_marker = folium.Marker(route_data["start"], icon=ship_icon)
-map.add_child(ship_marker)
-
 folium.PolyLine([route_data["start"], route_data["end"]], color="cyan", weight=6, opacity=0.7).add_to(map)
 folium_static(map)
 
 st.write(f"📝 **Περιγραφή:** {route_data['desc']}")
 
-# 🔊 Προσθήκη Εφέ Ήχου με Pygame
-pygame.mixer.init()
-def play_sound():
-    pygame.mixer.music.load("https://www.fesliyanstudios.com/play-mp3/640")
-    pygame.mixer.music.play()
-
-# 🚀 Animation για Κίνηση Σκάφους
+# 🚀 Προσθήκη Animation για Κίνηση Σκάφους
 if st.button("⚡ Ξεκίνα το ταξίδι"):
     st.write(f"🏁 **Το σκάφος ξεκινά:** {selected_route}!")
 
-    # Εφέ ήχου όταν ξεκινά η διαδρομή
-    play_sound()
-
+    # ⚓ Progress Bar για την κίνηση του σκάφους
     progress_bar = st.progress(0)
-    lat_steps = np.linspace(route_data["start"][0], route_data["end"][0], 10)
-    lon_steps = np.linspace(route_data["start"][1], route_data["end"][1], 10)
-
-    for i in range(10):
-        progress_bar.progress((i + 1) / 10)
-        
-        # Ανανεώνουμε τη θέση του σκάφους στον χάρτη
-        map = folium.Map(location=[lat_steps[i], lon_steps[i]], zoom_start=6, tiles="Stamen Terrain")
-        folium.Marker([lat_steps[i], lon_steps[i]], icon=ship_icon).add_to(map)
-        folium.PolyLine([route_data["start"], route_data["end"]], color="cyan", weight=6, opacity=0.7).add_to(map)
-        folium_static(map)
-        
-        time.sleep(0.5)
+    for i in range(12):
+        progress_bar.progress((i + 1) / 12)
+        time.sleep(0.4)
 
     st.success(f"🎉 **Έφτασες στον προορισμό σου!** {route_data['desc']}")
 
-# 🏆 Floating Panel με Real-Time Status
+# 🏆 Floating Panel με Live Πληροφορίες
 st.markdown(
     f"""
     <div class="floating-panel">
@@ -94,7 +92,7 @@ st.markdown(
         <p>🚢 **Διαδρομή:** {selected_route}</p>
         <p>📍 **Αφετηρία:** {route_data['start']}</p>
         <p>🏁 **Προορισμός:** {route_data['end']}</p>
-        <p>💰 **Κέρδη:** 150,000€ + Bonus</p>
+        <p>💰 **Κέρδη:** 120,000€ + Bonus</p>
     </div>
     """,
     unsafe_allow_html=True
