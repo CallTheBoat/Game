@@ -1,26 +1,25 @@
-import folium
-from streamlit_folium import st_folium
-import time
+import streamlit as st
 
-# Δημιουργία του χάρτη
-m = folium.Map(location=[37.9838, 23.7275], zoom_start=6)
+# Φόρτωση CSS
+def load_css():
+    with open("styles.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Συντεταγμένες των στάσεων του σκάφους
-route = [
-    [37.9838, 23.7275],  # Αθήνα
-    [36.3932, 25.4615],  # Σαντορίνη
-    [37.4467, 25.3289],  # Μύκονος
-]
+# Αρχικοποίηση της σελίδας
+st.set_page_config(page_title="AdOnBoard - Futuristic UI", layout="wide")
 
-# Προσθήκη του σκάφους στον χάρτη
-marker = folium.Marker(location=route[0], popup="🚢 Σκάφος", icon=folium.Icon(color="blue"))
-marker.add_to(m)
+# Φόρτωση CSS
+load_css()
 
-# Προβολή χάρτη στο Streamlit
-st_folium(m, width=700, height=500)
+# UI
+st.markdown("<h1 style='text-align: center;'>🚢 AdOnBoard - The Futuristic Experience</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Choose your adventure in the world of maritime advertising.</p>", unsafe_allow_html=True)
 
-# Προσομοίωση κίνησης του σκάφους
-for coords in route:
-    marker.location = coords
-    time.sleep(1)
-    st_folium(m, width=700, height=500)
+# Προσθήκη κουμπιού
+if st.button("Start Game"):
+    st.success("Game Started! 🚀")
+
+# Ενσωμάτωση animation (με iframe)
+st.markdown("""
+<iframe src="https://lottiefiles.com/animations/boat-sailing" width="100%" height="400" frameborder="0" allowfullscreen></iframe>
+""", unsafe_allow_html=True)
