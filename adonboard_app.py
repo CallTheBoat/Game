@@ -4,6 +4,7 @@ import folium
 from streamlit_folium import st_folium
 from datetime import date, timedelta
 import random
+import time
 
 # ---------- Minimal distance function ----------
 def distance_nm(lat1, lon1, lat2, lon2):
@@ -17,8 +18,51 @@ def distance_nm(lat1, lon1, lat2, lon2):
     dist_km = 6371.0 * c
     return dist_km * 0.539957
 
-# ========== Session State ==========
+# ---------- Function to create Monopoly map with ship marker ----------
+def create_monopoly_map(squares, current_index):
+    center = squares[0]["coords"]
+    mono_map = folium.Map(location=center, zoom_start=6)
+    coords_list = []
+    for i, sq in enumerate(squares):
+        coords_list.append(sq["coords"])
+        if "Finish" in sq["name"]:
+            folium.CircleMarker(
+                location=sq["coords"],
+                radius=8,
+                color="green",
+                fill=True,
+                fill_color="lime",
+                fill_opacity=0.8,
+                tooltip=sq["name"]
+            ).add_to(mono_map)
+        elif "Start" in sq["name"]:
+            folium.CircleMarker(
+                location=sq["coords"],
+                radius=8,
+                color="blue",
+                fill=True,
+                fill_color="aqua",
+                fill_opacity=0.8,
+                tooltip=sq["name"]
+            ).add_to(mono_map)
+        else:
+            folium.CircleMarker(
+                location=sq["coords"],
+                radius=6,
+                color="gray",
+                fill=True,
+                fill_color="white",
+                fill_opacity=0.8,
+                tooltip=f"{sq['name']} | {sq['event']}"
+            ).add_to(mono_map)
+    folium.PolyLine(coords_list, color="green", weight=4).add_to(mono_map)
+    # Προσθήκη marker για το πλοίο στη τρέχουσα θέση
+    ship_icon = folium.CustomIcon("https://via.placeholder.com/30x30.png?text=Boat", icon_size=(30,30))
+    ship_coords = squares[current_index]["coords"]
+    folium.Marker(ship_coords, icon=ship_icon, tooltip="Your Ship").add_to(mono_map)
+    return mono_map
 
+# ========== Session State ==========
 # 1) Προφίλ όπως πριν
 if "profile" not in st.session_state:
     st.session_state["profile"] = {
@@ -31,14 +75,13 @@ if "profile" not in st.session_state:
         "adonboard_friends": 0,
         "friend_count": 0
     }
-
 # 2) Sponsor route squares (Rhodes -> Kallithea -> Lindos -> Prasonisi -> Finish) όπως είχαμε
 if "sponsor_squares" not in st.session_state:
     st.session_state["sponsor_squares"] = [
         {
             "name": "Rhodes - Main Port",
             "coords": (36.4349, 28.2176),
-            "sponsor_logo": "https://via.placeholder.com/60.png?text=Vodafone"
+            "sponsor_logo": "[https://via.placeholder.com/60.png?text=Vodafone](https://via.placeholder.com/60.png?text=Vodafone)"
         },
         {
             "name": "Kallithea Beach",
@@ -53,7 +96,7 @@ if "sponsor_squares" not in st.session_state:
         {
             "name": "Prasonisi Beach",
             "coords": (35.8873, 27.7876),
-            "sponsor_logo": "https://via.placeholder.com/60.png?text=Nike"
+            "sponsor_logo": "[https://via.placeholder.com/60.png?text=Nike](https://via.placeholder.com/60.png?text=Nike)"
         },
         {
             "name": "Sponsor Finish",
@@ -61,7 +104,6 @@ if "sponsor_squares" not in st.session_state:
             "sponsor_logo": None
         }
     ]
-
 # 3) "Monopoly" route squares (Rhodes -> ... -> Kos) με events
 #   - engine failure, strong winds, strong currents, beach party κτλ.
 if "monopoly_squares" not in st.session_state:
@@ -97,30 +139,24 @@ if "monopoly_squares" not in st.session_state:
             "event": "Arrived at Kos!"
         }
     ]
-
 # Αρχικοποίηση index/dice logic για το Monopoly route
 if "monopoly_index" not in st.session_state:
     st.session_state["monopoly_index"] = 0  # σε ποιο square βρισκόμαστε
-
 # Τα υπόλοιπα session states
 if "total_nm" not in st.session_state:
     st.session_state["total_nm"] = 0.0
-
 if "profile_sent" not in st.session_state:
     st.session_state["profile_sent"] = False
-
 if "active_sponsor" not in st.session_state:
     st.session_state["active_sponsor"] = None
-
 if "sponsor_decision" not in st.session_state:
     st.session_state["sponsor_decision"] = None
-
 if "final_campaign_decision" not in st.session_state:
     st.session_state["final_campaign_decision"] = None
 
 # ---------- Sidebar & progress ----------
 st.sidebar.title("AddOnBoard Stats")
-st.sidebar.info("Active users: 35,000")
+[st.sidebar.info](http://st.sidebar.info/)("Active users: 35,000")
 MAX_FRIENDS = 100
 ratio = min(st.session_state["profile"]["friend_count"] / MAX_FRIENDS, 1.0)
 st.sidebar.progress(ratio)
@@ -141,11 +177,9 @@ with tabs[0]:
         st.session_state["profile"]["name"] = st.text_input("Name", value=st.session_state["profile"]["name"])
         st.session_state["profile"]["surname"] = st.text_input("Surname", value=st.session_state["profile"]["surname"])
         st.session_state["profile"]["age"] = st.number_input("Age", min_value=0, value=st.session_state["profile"]["age"])
-
         st.session_state["profile"]["facebook_friends"] = st.number_input("Facebook Friends", min_value=0, value=st.session_state["profile"]["facebook_friends"])
         st.session_state["profile"]["instagram_followers"] = st.number_input("Instagram Followers", min_value=0, value=st.session_state["profile"]["instagram_followers"])
         st.session_state["profile"]["adonboard_friends"] = st.number_input("AdOnBoard Friends", min_value=0, value=st.session_state["profile"]["adonboard_friends"])
-
         photo_file = st.file_uploader("Upload a Profile Photo", type=["jpg","jpeg","png"])
         save_btn = st.form_submit_button("Save Profile")
         if save_btn:
@@ -158,19 +192,16 @@ with tabs[0]:
     if st.session_state["profile"]["photo"]:
         st.image(st.session_state["profile"]["photo"], caption="Your Profile Photo", width=150)
 
-
 # ========== TAB 2: Board Game (Two Routes) ==========
 with tabs[1]:
     st.title("Board Game with Two Routes")
     route_choice = st.radio("Select a Route:", ["Sponsor Route", "Monopoly Route"])
-
     # 1) If sponsor route selected
     if route_choice == "Sponsor Route":
         st.subheader("Sponsor Route - Dotted Purple")
         squares = st.session_state["sponsor_squares"]
         center_coords = squares[0]["coords"]
         sponsor_map = folium.Map(location=center_coords, zoom_start=6)
-
         coords_list = []
         for sq in squares:
             coords_list.append(sq["coords"])
@@ -187,7 +218,6 @@ with tabs[1]:
                 ).add_to(sponsor_map)
             else:
                 folium.Marker(sq["coords"], tooltip=sq["name"]).add_to(sponsor_map)
-
             # Sponsor logo εάν υπάρχει
             if sq["sponsor_logo"]:
                 icon_html = folium.CustomIcon(sq["sponsor_logo"], icon_size=(60,60))
@@ -196,31 +226,26 @@ with tabs[1]:
                     icon=icon_html,
                     tooltip=f"Sponsor at {sq['name']}"
                 ).add_to(sponsor_map)
-
         # Διακεκομμένη (dotted) polyline σε μωβ
         folium.PolyLine(coords_list, color="purple", weight=4, dash_array="10,5").add_to(sponsor_map)
-
         st_folium(sponsor_map, width=700, height=450)
-
         # Ειδοποίηση αν sponsor_decision == Approved
         if st.session_state["sponsor_decision"] == "Approved":
             st.markdown("### 🚨 **New Sponsor Notification** 🚨")
-            st.info("Your sponsor has APPROVED your profile! Click below to open.")
+            [st.info](http://st.info/)("Your sponsor has APPROVED your profile! Click below to open.")
             if st.button("Open Notification"):
-                st.image("https://via.placeholder.com/600x300.png?text=Boat+with+Sponsor+Logos",
+                st.image("[https://via.placeholder.com/600x300.png?text=Boat+with+Sponsor+Logos](https://via.placeholder.com/600x300.png?text=Boat+with+Sponsor+Logos)",
                          caption="Καλώς ήρθες στο ταξίδι! (Sponsored).")
                 st.success("Enjoy your sponsored journey with custom logos & t-shirts!")
-
         st.markdown("### Sponsor Offer")
-        st.info("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount. 
-Proposed route: 
+        [st.info](http://st.info/)("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount.
+Proposed route:
 - Rhodes - Main Port
 - Kallithea Beach
 - Lindos Beach
 - Prasonisi Beach
 - Sponsor Finish
 """)
-
         accept_btn = st.button("Yes, Accept Sponsor")
         decline_btn = st.button("No, Decline Sponsor")
         if accept_btn:
@@ -248,7 +273,6 @@ Proposed route:
             st.session_state["profile_sent"] = False
             st.session_state["sponsor_decision"] = None
             st.session_state["final_campaign_decision"] = None
-
         # If there's an active sponsor, show “Send My Profile”
         sp = st.session_state["active_sponsor"]
         if sp is not None:
@@ -258,7 +282,6 @@ Proposed route:
             st.write(f"- Duration: {sp['duration_days']} days ({sp['start_date']}→{sp['end_date']})")
             st.write(f"- {sp['daily_posts']} posts/day, {sp['hours_near_beach']} hrs near beaches/day")
             st.write(f"- Materials: {sp['tshirts']}")
-
             if st.session_state["profile_sent"]:
                 st.warning("Profile already sent. Wait sponsor's decision (Tab 3/4).")
             else:
@@ -267,92 +290,49 @@ Proposed route:
                     st.session_state["sponsor_decision"] = None
                     st.session_state["final_campaign_decision"] = None
                     st.success("Profile sent! The sponsor sees it in 'Sponsor Admin' tab.")
-
     # 2) If Monopoly Route selected
     else:
         st.subheader("Monopoly-Style Route (Rhodes -> Kos) with Dice & Events")
         squares = st.session_state["monopoly_squares"]
-        center = squares[0]["coords"]
-        mono_map = folium.Map(location=center, zoom_start=6)
-
-        coords_list = []
-        for sq in squares:
-            coords_list.append(sq["coords"])
-            # Marker (circle) for each square
-            # Color them differently if it's Start/Finish or a normal event
-            if "Finish" in sq["name"]:
-                folium.CircleMarker(
-                    location=sq["coords"],
-                    radius=8,
-                    color="green",
-                    fill=True,
-                    fill_color="lime",
-                    fill_opacity=0.8,
-                    tooltip=sq["name"]
-                ).add_to(mono_map)
-            elif "Start" in sq["name"]:
-                folium.CircleMarker(
-                    location=sq["coords"],
-                    radius=8,
-                    color="blue",
-                    fill=True,
-                    fill_color="aqua",
-                    fill_opacity=0.8,
-                    tooltip=sq["name"]
-                ).add_to(mono_map)
-            else:
-                folium.CircleMarker(
-                    location=sq["coords"],
-                    radius=6,
-                    color="gray",
-                    fill=True,
-                    fill_color="white",
-                    fill_opacity=0.8,
-                    tooltip=f"{sq['name']} | {sq['event']}"
-                ).add_to(mono_map)
-
-        # Solid green line for the Monopoly route
-        folium.PolyLine(coords_list, color="green", weight=4).add_to(mono_map)
-
+        # Χάρτης χωρίς το animation αρχικά
+        mono_map = create_monopoly_map(squares, st.session_state["monopoly_index"])
         st_folium(mono_map, width=700, height=450)
-
         st.write(f"**Current Index**: {st.session_state['monopoly_index']} / {len(squares)-1}")
         st.write(f"**Current Square**: {squares[st.session_state['monopoly_index']]['name']}")
-        st.info(f"Event: {squares[st.session_state['monopoly_index']]['event']}")
-
+        [st.info](http://st.info/)(f"Event: {squares[st.session_state['monopoly_index']]['event']}")
         if st.button("Roll the Dice for Monopoly Route"):
             dice = random.randint(1, 6)
             st.success(f"You rolled a {dice}!")
             old_index = st.session_state["monopoly_index"]
-            new_index = old_index + dice
-            if new_index >= len(squares) - 1:
-                new_index = len(squares) - 1
-
-                 # Gradual position change
-            for step in range(old_index, new_index + 1):
-                st.session_state["monopoly_index"] = step
-                st.experimental_rerun()  # This will refresh the page and update the position
-                time.sleep(0.5)  # Delay to simulate gradual movement
-
-            # Calculate distance moved
+            # Χρήση container για animation του χάρτη
+            map_placeholder = st.empty()
+            # Κίνηση του πλοίου βήμα-βήμα ανάλογα με το αποτέλεσμα του ζαριού
+            for step in range(1, dice + 1):
+                temp_index = old_index + step
+                if temp_index >= len(squares) - 1:
+                    temp_index = len(squares) - 1
+                mono_map = create_monopoly_map(squares, temp_index)
+                map_placeholder.empty()
+                st_folium(mono_map, width=700, height=450)
+                time.sleep(0.5)
+            final_index = temp_index
+            st.session_state["monopoly_index"] = final_index
+            # Υπολογισμός συνολικής απόστασης που διανύθηκε
             startC = squares[old_index]["coords"]
-            endC   = squares[new_index]["coords"]
+            endC   = squares[final_index]["coords"]
             dist_nm_ = distance_nm(startC[0], startC[1], endC[0], endC[1])
             st.session_state["total_nm"] += dist_nm_
-            st.session_state["monopoly_index"] = new_index
-            st.info(f"Arrived at {squares[new_index]['name']}")
-            st.info(f"Event: {squares[new_index]['event']}")
-
-            # Some simple event logic:
-            if "Lose a turn" in squares[new_index]["event"]:
+            st.info(f"Arrived at {squares[final_index]['name']}")
+            st.info(f"Event: {squares[final_index]['event']}")
+            # Λογική event:
+            if "Lose a turn" in squares[final_index]["event"]:
                 st.warning("You lose a turn next time (not fully implemented).")
-            elif "Beach party" in squares[new_index]["event"]:
+            elif "Beach party" in squares[final_index]["event"]:
                 st.success("Party time! Stay 1 turn? (not fully implemented).")
-            elif "Strong currents" in squares[new_index]["event"]:
-                st.info("Move forward 1 extra square! (not fully implemented).")
-            elif "Strong winds" in squares[new_index]["event"]:
-                st.info("Slower speed next turn (not fully implemented).")
-
+            elif "Strong currents" in squares[final_index]["event"]:
+                [st.info](http://st.info/)("Move forward 1 extra square! (not fully implemented).")
+            elif "Strong winds" in squares[final_index]["event"]:
+                [st.info](http://st.info/)("Slower speed next turn (not fully implemented).")
         # If final square
         if st.session_state["monopoly_index"] == len(squares) - 1:
             st.balloons()
@@ -361,13 +341,12 @@ Proposed route:
                 st.session_state["monopoly_index"] = 0
                 st.success("Monopoly route restarted.")
 
-
 # ========== TAB 3: Sponsor Requirements (Passenger) ==========
 with tabs[2]:
     st.title("Sponsor Requirements (Passenger Final)")
     sp = st.session_state["active_sponsor"]
     if sp is None:
-        st.info("No active sponsor. Accept one in 'Board Game' tab's Sponsor Route.")
+        [st.info](http://st.info/)("No active sponsor. Accept one in 'Board Game' tab's Sponsor Route.")
     else:
         st.success(f"Active Sponsor: {sp['sponsor_name']}")
         st.write(f"- Required Impressions: {sp['required_impressions']}")
@@ -376,13 +355,12 @@ with tabs[2]:
         st.write(f"- {sp['daily_posts']} posts/day")
         st.write(f"- {sp['hours_near_beach']} hours near beaches/day")
         st.write(f"- Materials: {sp['tshirts']}")
-
         if not st.session_state["profile_sent"]:
             st.warning("Haven't sent your profile to sponsor. Go to 'Board Game' tab (Sponsor Route).")
         else:
             dec = st.session_state["sponsor_decision"]
             if dec is None:
-                st.info("Waiting for sponsor's decision. See Tab 4.")
+                [st.info](http://st.info/)("Waiting for sponsor's decision. See Tab 4.")
             elif dec == "Rejected":
                 st.error("Sponsor REJECTED your profile. Sorry!")
             elif dec == "Approved":
@@ -394,7 +372,7 @@ with tabs[2]:
                 elif final_dec == "No":
                     st.warning("You refused the final campaign. No sponsor for you.")
                 elif final_dec == "Think":
-                    st.info("Still thinking…")
+                    [st.info](http://st.info/)("Still thinking…")
                 else:
                     yes_btn   = st.button("Yes, I accept final campaign!")
                     no_btn    = st.button("No, I refuse final campaign.")
@@ -407,7 +385,7 @@ with tabs[2]:
                         st.warning("You refused the final campaign. Maybe next time.")
                     elif think_btn:
                         st.session_state["final_campaign_decision"] = "Think"
-                        st.info("You're still thinking…")
+                        [st.info](http://st.info/)("You're still thinking…")
 
 # ========== TAB 4: Sponsor Admin ==========
 with tabs[3]:
@@ -418,7 +396,7 @@ with tabs[3]:
     else:
         st.success(f"Sponsor: {sp['sponsor_name']}")
         if not st.session_state["profile_sent"]:
-            st.info("Passenger hasn't sent profile yet.")
+            [st.info](http://st.info/)("Passenger hasn't sent profile yet.")
         else:
             st.markdown("### Passenger's Profile")
             prof = st.session_state["profile"]
@@ -429,10 +407,8 @@ with tabs[3]:
             st.write(f"- Instagram Followers: {prof['instagram_followers']}")
             st.write(f"- AdOnBoard Friends: {prof['adonboard_friends']}")
             st.write(f"- 'AddOnBoard' friend_count: {prof['friend_count']}")
-
             if prof["photo"]:
                 st.image(prof["photo"], caption="Passenger's Profile Photo", width=150)
-
             st.markdown("#### Approve or Reject passenger's profile?")
             dec = st.session_state["sponsor_decision"]
             if dec == "Approved":
