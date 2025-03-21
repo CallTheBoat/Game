@@ -156,7 +156,7 @@ if "final_campaign_decision" not in st.session_state:
 
 # ---------- Sidebar & progress ----------
 st.sidebar.title("AddOnBoard Stats")
-[st.sidebar.info](http://st.sidebar.info/)("Active users: 35,000")
+[st.sidebar.info]("Active users: 35,000")
 MAX_FRIENDS = 100
 ratio = min(st.session_state["profile"]["friend_count"] / MAX_FRIENDS, 1.0)
 st.sidebar.progress(ratio)
@@ -232,13 +232,13 @@ with tabs[1]:
         # Ειδοποίηση αν sponsor_decision == Approved
         if st.session_state["sponsor_decision"] == "Approved":
             st.markdown("### 🚨 **New Sponsor Notification** 🚨")
-            [st.info](http://st.info/)("Your sponsor has APPROVED your profile! Click below to open.")
+            [st.info]("Your sponsor has APPROVED your profile! Click below to open.")
             if st.button("Open Notification"):
                 st.image("[https://via.placeholder.com/600x300.png?text=Boat+with+Sponsor+Logos](https://via.placeholder.com/600x300.png?text=Boat+with+Sponsor+Logos)",
                          caption="Καλώς ήρθες στο ταξίδι! (Sponsored).")
                 st.success("Enjoy your sponsored journey with custom logos & t-shirts!")
         st.markdown("### Sponsor Offer")
-        [st.info](http://st.info/)("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount.
+        [st.info]("""Sponsor: 'Vodafone' wants 1000 impressions, 50% discount.
 Proposed route:
 - Rhodes - Main Port
 - Kallithea Beach
@@ -299,7 +299,7 @@ Proposed route:
         st_folium(mono_map, width=700, height=450)
         st.write(f"**Current Index**: {st.session_state['monopoly_index']} / {len(squares)-1}")
         st.write(f"**Current Square**: {squares[st.session_state['monopoly_index']]['name']}")
-        [st.info](http://st.info/)(f"Event: {squares[st.session_state['monopoly_index']]['event']}")
+        [st.info](f"Event: {squares[st.session_state['monopoly_index']]['event']}")
         if st.button("Roll the Dice for Monopoly Route"):
             dice = random.randint(1, 6)
             st.success(f"You rolled a {dice}!")
@@ -330,9 +330,9 @@ Proposed route:
             elif "Beach party" in squares[final_index]["event"]:
                 st.success("Party time! Stay 1 turn? (not fully implemented).")
             elif "Strong currents" in squares[final_index]["event"]:
-                [st.info](http://st.info/)("Move forward 1 extra square! (not fully implemented).")
+                [st.info]("Move forward 1 extra square! (not fully implemented).")
             elif "Strong winds" in squares[final_index]["event"]:
-                [st.info](http://st.info/)("Slower speed next turn (not fully implemented).")
+                [st.info]("Slower speed next turn (not fully implemented).")
         # If final square
         if st.session_state["monopoly_index"] == len(squares) - 1:
             st.balloons()
@@ -346,7 +346,7 @@ with tabs[2]:
     st.title("Sponsor Requirements (Passenger Final)")
     sp = st.session_state["active_sponsor"]
     if sp is None:
-        [st.info](http://st.info/)("No active sponsor. Accept one in 'Board Game' tab's Sponsor Route.")
+        [st.info]("No active sponsor. Accept one in 'Board Game' tab's Sponsor Route.")
     else:
         st.success(f"Active Sponsor: {sp['sponsor_name']}")
         st.write(f"- Required Impressions: {sp['required_impressions']}")
@@ -360,7 +360,7 @@ with tabs[2]:
         else:
             dec = st.session_state["sponsor_decision"]
             if dec is None:
-                [st.info](http://st.info/)("Waiting for sponsor's decision. See Tab 4.")
+                [st.info]("Waiting for sponsor's decision. See Tab 4.")
             elif dec == "Rejected":
                 st.error("Sponsor REJECTED your profile. Sorry!")
             elif dec == "Approved":
@@ -372,7 +372,7 @@ with tabs[2]:
                 elif final_dec == "No":
                     st.warning("You refused the final campaign. No sponsor for you.")
                 elif final_dec == "Think":
-                    [st.info](http://st.info/)("Still thinking…")
+                    [st.info]("Still thinking…")
                 else:
                     yes_btn   = st.button("Yes, I accept final campaign!")
                     no_btn    = st.button("No, I refuse final campaign.")
@@ -385,7 +385,7 @@ with tabs[2]:
                         st.warning("You refused the final campaign. Maybe next time.")
                     elif think_btn:
                         st.session_state["final_campaign_decision"] = "Think"
-                        [st.info](http://st.info/)("You're still thinking…")
+                        [st.info]("You're still thinking…")
 
 # ========== TAB 4: Sponsor Admin ==========
 with tabs[3]:
@@ -396,7 +396,7 @@ with tabs[3]:
     else:
         st.success(f"Sponsor: {sp['sponsor_name']}")
         if not st.session_state["profile_sent"]:
-            [st.info](http://st.info/)("Passenger hasn't sent profile yet.")
+            [st.info]("Passenger hasn't sent profile yet.")
         else:
             st.markdown("### Passenger's Profile")
             prof = st.session_state["profile"]
