@@ -327,6 +327,13 @@ Proposed route:
             new_index = old_index + dice
             if new_index >= len(squares) - 1:
                 new_index = len(squares) - 1
+
+                 # Gradual position change
+            for step in range(old_index, new_index + 1):
+                st.session_state["monopoly_index"] = step
+                st.experimental_rerun()  # This will refresh the page and update the position
+                time.sleep(0.5)  # Delay to simulate gradual movement
+
             # Calculate distance moved
             startC = squares[old_index]["coords"]
             endC   = squares[new_index]["coords"]
